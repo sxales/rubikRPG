@@ -125,7 +125,7 @@ var Stage = function Stage() {
 	this.touchend = function(evt) {
 		if (evt.changedTouches[0].pageY < _height*SCREENRATIO) {
 			var btnup = new Date();
-			if (btndown > 0 && btnup - btndown >= 100) this.rightClick(evt.changedTouches[0].pageX, evt.changedTouches[0].pageY);//long press
+			if (btndown > 0 && btnup - btndown >= 1000) this.rightClick(evt.changedTouches[0].pageX, evt.changedTouches[0].pageY);//long press
 			else this.click(evt.changedTouches[0].pageX, evt.changedTouches[0].pageY); //left click
 			btndown = 0;
 		}
