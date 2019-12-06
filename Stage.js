@@ -132,6 +132,7 @@ var Stage = function Stage() {
 	};
 
 	this.touchcancel = function(evt) {
+		touchend(evt);
 	};
 
 	this.touchmove = function(evt) {
