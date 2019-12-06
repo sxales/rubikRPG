@@ -125,7 +125,7 @@ var Stage = function Stage() {
 	this.touchend = function(evt) {
 		if (evt.changedTouches[0].pageY < _height*SCREENRATIO) {
 			var btnup = new Date();
-			if (btndown > 0 && btnup - btndown >= 1000) this.rightClick(evt.changedTouches[0].pageX, evt.changedTouches[0].pageY);//long press
+			if (btndown > 0 && btnup - btndown >= 500) this.rightClick(evt.changedTouches[0].pageX, evt.changedTouches[0].pageY);//long press
 			else this.click(evt.changedTouches[0].pageX, evt.changedTouches[0].pageY); //left click
 			btndown = 0;
 		}
@@ -895,6 +895,17 @@ var Stage = function Stage() {
 		var y = Math.floor(Math.random()*model.getHeight());
 		model.set(x, y, temp);
 		stageboss = {x: x, y: y};
+
+		//teamleader (at least 1 per stage)
+		var temp = new Entity();
+		temp = {hp: basehp*4, currenthp: basehp*4, xp: 3*(stage+1), atk: Math.floor(baseatk*ADVRATIO+1), def: Math.floor(basedef*ADVRATIO+1), spd: 1, rcv: Math.floor(basercv*ADVRATIO+1), act: 0, statuseffect: NORMAL, sts: 0, type: ADVANCED};
+		var x = stageboss.x;
+		var y = stageboss.y;
+		do {
+			x = Math.floor(Math.random()*model.getWidth());
+			y = Math.floor(Math.random()*model.getHeight());
+		} while (x == stageboss.x || y == stageboss.y);
+		model.set(x, y, temp);
 
 		state = WAITING;
 		tutorial = 0;
