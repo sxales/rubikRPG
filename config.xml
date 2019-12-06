@@ -16,6 +16,8 @@
   <author href="https://trevorrjohnson.com" email="trevorrjohnson@gmail.com">
       Trevor Johnson
   </author>
-    
+
   <icon src="images/blue.png" />
+  <preference name="Fullscreen" value="true" />
+  <preference name="Orientation" value="portrait" />
 </widget>
