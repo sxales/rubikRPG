@@ -437,8 +437,10 @@ var Stage = function Stage() {
 				if (state == INPLAY && model.get(i,j).type != -1) { //add damamge animation
 					index = 0; //red
 					if (model.get(i,j).statuseffect == PETRIFIED) index = 21;//light gray
-					var offset = Math.floor((model.get(i,j).currenthp / model.get(i,j).hp)*64)
-					if (offset < 64 && offset >= 0) ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+1+offset, 64*Math.floor(index/8)+1, 64-offset, 64, i*width+offset, j*height, width-offset, height);
+					var hppercent = (model.get(i,j).currenthp / model.get(i,j).hp);
+					var offset = Math.floor(64*hppercent);
+					//var offset = Math.floor((model.get(i,j).currenthp / model.get(i,j).hp)*64);
+					if (offset < 64 && offset >= 0) ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+offset, 64*Math.floor(index/8)+1, 64-offset, 64, i*width+(width*hppercent), j*height, width-(width*hppercent), height);
 				}
 				if (state == INPLAY && locked) { //add lock and key sprites
 					if (model.get(i,j).type == BOSS) ctx.drawImage(resourceRepository.spriteSheet, 0, 0, 64, 64, i*width + (width*.1),j*height + (height*.1),width*.8,height*.8);
@@ -864,7 +866,7 @@ var Stage = function Stage() {
 
 		//stageboss (1 per stage)
 		var temp = new Entity();
-		temp = {hp: player.hp*6, currenthp: basehp*6, xp: 5*(stage+1), atk: Math.floor(baseatk*BOSSRATIO+1), def: Math.floor(basedef*BOSSRATIO+1), spd: 1, rcv: Math.floor(basercv*BOSSRATIO+1), act: 0, statuseffect: NORMAL, sts: 0, type: BOSS};
+		temp = {hp: basehp*6, currenthp: basehp*6, xp: 5*(stage+1), atk: Math.floor(baseatk*BOSSRATIO+1), def: Math.floor(basedef*BOSSRATIO+1), spd: 1, rcv: Math.floor(basercv*BOSSRATIO+1), act: 0, statuseffect: NORMAL, sts: 0, type: BOSS};
 		var x = Math.floor(Math.random()*model.getWidth());
 		var y = Math.floor(Math.random()*model.getHeight());
 		model.set(x, y, temp);
