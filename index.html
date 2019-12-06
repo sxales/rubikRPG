@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>rubik rpg</title>
+    <style>
+      canvas {
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        background: transparent;
+      }
+      #background {
+	  	z-index: -2;
+	  }
+	  #sprites {
+	  	z-index: -1;
+	  }
+    </style>
+    <link rel="icon"
+		type="image/png"
+     	href="images/favicon.ico">
+  </head>
+  <body bgcolor="000000" text="FFFFFF">
+	<div id="loading" align="center">loading . . . </div>
+  <div align="center">
+    <!-- The canvas for the panning background -->
+    <canvas id="background">
+      Your browser does not support canvas. Please try again with a different browser.
+    </canvas>
+    <canvas id="sprite">
+    <!--This canvas is for the enemy sprites-->
+    </canvas>
+    </div>
+    <script src="Cursor.js"></script>
+    <script src="ArrayList2d.js"></script>
+    <script src="Entity.js"></script>
+    <script src="Message.js"></script>
+    <script src="Stage.js"></script>
+    <script src="Game.js"></script>
+    <script src="main.js"></script>
+    <script src="ImageRepository.js"></script>
+  </body>
+</html>
