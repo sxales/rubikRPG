@@ -28,16 +28,16 @@ var Game = function Game() {
 			currentScene.mousemove(evt);
 		}, false);
 		this.spriteCanvas.addEventListener("touchstart", function(evt) {
-			currentScene.mousedown(evt);
+			currentScene.touchstart(evt);
 		}, false);
 		this.spriteCanvas.addEventListener("touchend", function(evt) {
-			currentScene.mouseup(evt);
+			currentScene.touchend(evt);
 		}, false);
 		this.spriteCanvas.addEventListener("touchcancel", function(evt) {
-			currentScene.mouseout(evt);
+			currentScene.touchcancel(evt);
 		}, false);
 		this.spriteCanvas.addEventListener("touchmove", function(evt) {
-			currentScene.mousemove(evt);
+			currentScene.touchmove(evt);
 		}, false);
 		this.spriteCanvas.addEventListener("contextmenu", function(evt) { evt.preventDefault(); }, false);
 
