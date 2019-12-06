@@ -15,6 +15,18 @@ var Game = function Game() {
 		height = this.spriteCanvas.height;
 
 		window.addEventListener("keydown", function(evt) { currentScene.keydown(evt); }, false);
+		this.spriteCanvas.addEventListener("mousedown", function(evt) {
+			currentScene.mousedown(evt);
+		}, false);
+		this.spriteCanvas.addEventListener("mouseup", function(evt) {
+			currentScene.mouseup(evt);
+		}, false);
+		this.spriteCanvas.addEventListener("moustout", function(evt) {
+			currentScene.mouseout(evt);
+		}, false);
+		this.spriteCanvas.addEventListener("mousemove", function(evt) {
+			currentScene.mousemove(evt);
+		}, false);
 		this.spriteCanvas.addEventListener("touchstart", function(evt) {
 			currentScene.mousedown(evt);
 		}, false);
@@ -28,9 +40,6 @@ var Game = function Game() {
 			currentScene.mousemove(evt);
 		}, false);
 		this.spriteCanvas.addEventListener("contextmenu", function(evt) { evt.preventDefault(); }, false);
-		/*this.menuCanvas.addEventListener("click", function(evt) {
-			game.click(evt);
-		}, false);*/
 
 		if (this.bgCanvas.getContext && this.spriteCanvas.getContext) {
 			this.bgContext = this.bgCanvas.getContext('2d');
@@ -48,17 +57,7 @@ var Game = function Game() {
 			this.bgContext.drawImage(resourceRepository.background, 0, _height*SCREENRATIO, _width, _height*(1-SCREENRATIO));
 
 			stage.init(_width, _height);
-			/*stage.subscribe(function(c) {
-				overworld.outcome(c);
-				currentScene = overworld;
-			});
-			overworld.init(_width, _height);
-			overworld.subscribe(function(r) {
-				stage.reset(r);
-				currentScene = stage;
-			});*/
-
-			currentScene = stage;//overworld;//mapeditor;
+			currentScene = stage;
 
 			return true;
 		}
