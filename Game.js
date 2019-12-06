@@ -8,7 +8,7 @@ var Game = function Game() {
 
 
 	this.init = function() {
-		this.bgCanvas = document.getElementById('background');
+		//this.bgCanvas = document.getElementById('background');
 		this.spriteCanvas = document.getElementById('sprite');
 
 		width = this.spriteCanvas.width;
@@ -49,8 +49,8 @@ var Game = function Game() {
 		}, false);
 		this.spriteCanvas.addEventListener("contextmenu", function(evt) { evt.preventDefault(); }, false);
 
-		if (this.bgCanvas.getContext && this.spriteCanvas.getContext) {
-			this.bgContext = this.bgCanvas.getContext('2d');
+		if (this.spriteCanvas.getContext) {
+			//this.bgContext = this.bgCanvas.getContext('2d');
 			this.spriteContext = this.spriteCanvas.getContext('2d');
 
 			_height = window.innerHeight;
@@ -59,10 +59,10 @@ var Game = function Game() {
 			this.spriteCanvas.width = _width;
 			this.spriteCanvas.height = _height;
 
-			this.bgCanvas.width = _width;
-			this.bgCanvas.height = _height;
+			//this.bgCanvas.width = _width;
+			//this.bgCanvas.height = _height;
 
-			this.bgContext.drawImage(resourceRepository.background, 0, _height*SCREENRATIO, _width, _height*(1-SCREENRATIO));
+			this.spriteContext.drawImage(resourceRepository.background, 0, _height*SCREENRATIO, _width, _height*(1-SCREENRATIO));
 
 			stage.init(_width, _height);
 			currentScene = stage;

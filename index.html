@@ -1,17 +1,15 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>rubik rpg</title>
+    <title>rubik rpg ver.3</title>
     <style>
       canvas {
-        position: absolute;
-        top: 0px;
-        left: 0px;
+      	display: block;
+      	padding: 0 px;
+      	top: 0 px;
+   		margin: auto;
         background: transparent;
       }
-      #background {
-	  	z-index: -2;
-	  }
 	  #sprites {
 	  	z-index: -1;
 	  }
@@ -21,14 +19,9 @@
      	href="images/favicon.ico">
   </head>
   <body bgcolor="FFFF99">
-	<div id="loading" align="center">loading . . . </div>
   <div align="center">
-    <!-- The canvas for the panning background -->
-    <canvas id="background">
-      Your browser does not support canvas. Please try again with a different browser.
-    </canvas>
     <canvas id="sprite">
-    <!--This canvas is for the enemy sprites-->
+   		Your browser does not support canvas. Please try again with a different browser.
     </canvas>
     </div>
     <script src="Cursor.js"></script>

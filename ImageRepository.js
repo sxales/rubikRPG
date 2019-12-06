@@ -24,7 +24,7 @@ var resourceRepository = new function() {
 		if (numLoaded === numResources) {
 			window.init();
 		}
-		else document.getElementById("loading").innerHTML = "loading . . . "+Math.round((numLoaded/numResources)*100)+"%";
+		//else document.getElementById("sprite").innerHTML = "loading . . . "+Math.round((numLoaded/numResources)*100)+"%";
 	}
 
 	this.gameover.oncanplay = function() {

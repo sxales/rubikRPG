@@ -505,7 +505,7 @@ var Stage = function Stage() {
 
 		//draw scoreboard
 		//ctx.clearRect(0, (_height*SCREENRATIO), _width, (_height*(1-SCREENRATIO)));
-
+		ctx.drawImage(resourceRepository.background, 0, _height*SCREENRATIO, _width, _height*(1-SCREENRATIO));
 
 		var fs = _height*(1-SCREENRATIO) / 6;
 		var margin = fs;
