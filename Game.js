@@ -15,7 +15,7 @@ var Game = function Game() {
 		height = this.spriteCanvas.height;
 
 		window.addEventListener("keydown", function(evt) { currentScene.keydown(evt); }, false);
-		/*this.spriteCanvas.addEventListener("mousedown", function(evt) {
+		this.spriteCanvas.addEventListener("mousedown", function(evt) {
 			evt.preventDefault();
 			currentScene.mousedown(evt);
 		}, false);
@@ -30,7 +30,7 @@ var Game = function Game() {
 		this.spriteCanvas.addEventListener("mousemove", function(evt) {
 			evt.preventDefault();
 			currentScene.mousemove(evt);
-		}, false);*/
+		}, false);
 		this.spriteCanvas.addEventListener("touchstart", function(evt) {
 			evt.preventDefault();
 			currentScene.touchstart(evt);
@@ -54,7 +54,7 @@ var Game = function Game() {
 			this.spriteContext = this.spriteCanvas.getContext('2d');
 
 			_height = window.innerHeight;
-			_width = _height*9/16;
+			_width = window.innerWidth;//_height*10/16;
 
 			this.spriteCanvas.width = _width;
 			this.spriteCanvas.height = _height;
