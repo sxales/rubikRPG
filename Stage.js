@@ -123,10 +123,10 @@ var Stage = function Stage() {
 	};
 
 	this.touchend = function(evt) {
-		if (evt.touches[0].pageY < _height*SCREENRATIO) {
+		if (evt.changedTouches[0].pageY < _height*SCREENRATIO) {
 			var btnup = new Date();
-			if (btndown > 0 && btnup - btndown >= 100) this.rightClick(evt.touches[0].pageX, evt.touches[0].pageY);//long press
-			else this.click(evt.touches[0].pageX, evt.touches[0].pageY); //left click
+			if (btndown > 0 && btnup - btndown >= 100) this.rightClick(evt.changedTouches[0].pageX, evt.changedTouches[0].pageY);//long press
+			else this.click(evt.changedTouches[0].pageX, evt.changedTouches[0].pageY); //left click
 			btndown = 0;
 		}
 	};
