@@ -99,7 +99,7 @@ var Stage = function Stage() {
 	};
 
 	this.mouseup = function(evt) {
-		if (evt.clientY < _height*SCREENRATIO) {
+		if (evt.touches[0].clientY < _height*SCREENRATIO) {
 			if (evt.button == 0) {
 				var btnup = new Date();
 				if (btndown > 0 && btnup - btndown >= 500) this.rightClick(evt);//long press
@@ -120,8 +120,8 @@ var Stage = function Stage() {
 		if (state == INPLAY && player.spl >= 100) {
 			var width = _width / model.getWidth();
 			var height = (_height*SCREENRATIO) / model.getHeight();
-			var x = Math.floor(evt.clientX/width);
-			var y = Math.floor(evt.clientY/height);
+			var x = Math.floor(evt.touches[0].clientX/width);
+			var y = Math.floor(evt.touches[0].clientY/height);
 			var resetspl = false;
 			for (var i=-1; i<=1; i++) {
 				for (var j=-1; j<=1; j++) {
@@ -153,8 +153,8 @@ var Stage = function Stage() {
 		else if (state == INPLAY) {
 			var width = _width / model.getWidth();
 			var height = (_height*SCREENRATIO) / model.getHeight();
-			var x = Math.floor(evt.clientX/width);
-			var y = Math.floor(evt.clientY/height);
+			var x = Math.floor(evt.touches[0].clientX/width);
+			var y = Math.floor(evt.touches[0].clientY/height);
 			var enemy = model.get(x,y);
 			if ((enemy.type == BASIC || enemy.type == INTERMEDIATE || enemy.type == ADVANCED || enemy.type == MAGE || (enemy.type == BOSS && !locked)) && enemy.statuseffect != PETRIFIED){
 				var atk = player.atk;
@@ -167,7 +167,7 @@ var Stage = function Stage() {
 					var m = new Message();
 					var fs = width/3;
 					var txt = "critical hit";
-					m = {type: GREEN, message: txt, x: evt.clientX-(fs*txt.length/2), y: evt.clientY, s: fs, duration: 1, tick: 0, delay: 0};
+					m = {type: GREEN, message: txt, x: evt.touches[0].clientX-(fs*txt.length/2), y: evt.touches[0].clientY, s: fs, duration: 1, tick: 0, delay: 0};
 					messages.push(m);
 				}
 				else if (Math.floor(Math.random()*256/spd) === 0) {
@@ -176,7 +176,7 @@ var Stage = function Stage() {
 					var m = new Message();
 					var fs = width/3;
 					var txt = "miss";
-					m = {type: WHITE, message: txt, x: evt.clientX-(fs*txt.length/2), y: evt.clientY, s: fs, duration: 1, tick: 0, delay: 0};
+					m = {type: WHITE, message: txt, x: evt.touches[0].clientX-(fs*txt.length/2), y: evt.touches[0].clientY, s: fs, duration: 1, tick: 0, delay: 0};
 					messages.push(m);
 				}
 				enemy.currenthp -= Math.round(d);
@@ -189,7 +189,7 @@ var Stage = function Stage() {
 
 				var m = new Message();
 				var fs = width/3;
-				m = {type: GREEN, message:Math.round(d), x: evt.clientX+fs*Math.random(), y: evt.clientY-fs*Math.random(), s: fs, duration: 1, tick: 0, delay: 0};
+				m = {type: GREEN, message:Math.round(d), x: evt.touches[0].clientX+fs*Math.random(), y: evt.touches[0].clientY-fs*Math.random(), s: fs, duration: 1, tick: 0, delay: 0};
 				messages.push(m);
 
 				if (enemy.currenthp > 0) {
