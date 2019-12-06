@@ -99,6 +99,7 @@ var Stage = function Stage() {
 	};
 
 	this.mouseup = function(evt) {
+		var size = _width / (model.getWidth()*2);
 		if (evt.clientY < _height*SCREENRATIO) {
 			if (evt.button == 0) {
 				var btnup = new Date();
@@ -107,6 +108,9 @@ var Stage = function Stage() {
 				btndown = 0;
 			}
 			else this.rightClick(evt.clientX, evt.clientY);
+		}
+		else if (evt.clientY >_height-size && evt.clientX >_width-size) {
+					state = PAUSED
 		}
 	};
 
@@ -123,11 +127,15 @@ var Stage = function Stage() {
 	};
 
 	this.touchend = function(evt) {
+		var size = _width / (model.getWidth()*2);
 		if (evt.changedTouches[0].pageY < _height*SCREENRATIO) {
 			var btnup = new Date();
 			if (btndown > 0 && btnup - btndown >= 500) this.rightClick(evt.changedTouches[0].pageX, evt.changedTouches[0].pageY);//long press
 			else this.click(evt.changedTouches[0].pageX, evt.changedTouches[0].pageY); //left click
 			btndown = 0;
+		}
+		else if (evt.changedTouches[0].pageY >_height-size && evt.changedTouches[0].pageX >_width-size) {
+			state = PAUSED
 		}
 	};
 
@@ -610,8 +618,8 @@ var Stage = function Stage() {
 			ctx.drawImage(resourceRepository.box, margin, _height*SCREENRATIO/2 - h/2, w, h);
 			ctx.drawImage(resourceRepository.logo, margin, _height*SCREENRATIO/2 - h/2 - w*.29, w, w*.19);
 
-			var txt = "click to begin";
-			if (stage > 0) txt = "click to continue";
+			var txt = "tap to begin";
+			if (stage > 0) txt = "tap to continue";
 			var fs = _width / (txt.length+2);
 			if (Math.round(_frame/5)% 2 == 1) this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, _height*SCREENRATIO/2 + h/2 + fs*2, fs);
 
@@ -623,16 +631,16 @@ var Stage = function Stage() {
 				if (tutorial < 50) {
 					var txt = "how to play";
 					this.writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(1/2)), fs);
-					var txt = "click to attack";
+					var txt = "tap to attack";
 					this.writeMessage(ctx, txt, PINK, (_width-fs*txt.length)/2, starth + (fs*(2)), fs);
 
 					var txt = "when the SPL bar is";
 					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(7/2)), fs);
-					var txt = "full long-press";
+					var txt = "full, long-press";
 					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(9/2)), fs);
-					var txt = "click to petrify";
+					var txt = "to petrify nearby";
 					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(11/2)), fs);
-					var txt = "nearby enemies";
+					var txt = "enemies";
 					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(13/2)), fs);
 
 					var txt = "Item Chest";
@@ -641,7 +649,7 @@ var Stage = function Stage() {
 					var index = 17;//brown
 					ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+1, 64*Math.floor(index/8)+1, 63, 63, w/2 - fs/2, starth + (fs*(37/4)), fs*3, fs*3);
 
-					var txt = "click chests for";
+					var txt = "tap chests for";
 					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(25/2)), fs);
 					var txt = "bonuses but lookout";
 					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(27/2)), fs);
@@ -760,11 +768,13 @@ var Stage = function Stage() {
 			var w = _width*.9;
 			var h = w * .8
 			var margin = _width*.05;
-			var fs = _width / 16;
 			ctx.drawImage(resourceRepository.logo, margin, _height*SCREENRATIO/2 - h/2 - w*.29, w, w*.19);
-			if (Math.round(_frame/5)% 2 == 1) this.writeMessage(ctx, "click to resume", WHITE, (_width-fs*15)/2, _height*SCREENRATIO/2 + h/2 + fs*2, fs);
-			fs = _width / 7;
-			this.writeMessage(ctx, "paused", SUPER, (_width-fs*6)/2, _height*SCREENRATIO/2 - fs/2, fs);
+			var txt = "tap to resume";
+			var fs = _width / (txt.length+2);
+			if (Math.round(_frame/5)% 2 == 1) this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, _height*SCREENRATIO/2 + h/2 + fs*2, fs);
+			var txt = "paused";
+			var fs = _width / (txt.length+2);
+			this.writeMessage(ctx, txt, SUPER, (_width-fs*txt.length)/2, _height*SCREENRATIO/2 - fs/2, fs);
 		}
 		else if (state == FAILED) {
 			var txt = "penalty";
@@ -829,6 +839,12 @@ var Stage = function Stage() {
 				//this.notify(true); //stage cleared
 				this.reset();
 			}
+		}
+
+		//draw menu button
+		if (state != SUCCESS && state != FAILED) {
+			var size = _width / (model.getWidth()*2);
+			ctx.drawImage(resourceRepository.menu, _width-size, _height-size, size, size);
 		}
 	};
 

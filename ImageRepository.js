@@ -3,6 +3,8 @@ var resourceRepository = new function() {
 	this.background = new Image();
 	this.logo = new Image();
 	this.box = new Image();
+	this.button = new Image();
+	this.menu = new Image();
 
 	this.tileSheet = new Image();
 	this.spriteSheet = new Image();
@@ -17,14 +19,14 @@ var resourceRepository = new function() {
 	this.boom = new Audio();
 
 	// Ensure all images have loaded before starting the game
-	var numResources = 12;
+	var numResources = 14;
 	var numLoaded = 0;
 	function imageLoaded() {
 		numLoaded++;
 		if (numLoaded === numResources) {
 			window.init();
 		}
-		//else document.getElementById("sprite").innerHTML = "loading . . . "+Math.round((numLoaded/numResources)*100)+"%";
+		else document.getElementById("loading").innerHTML = "loading . . . "+Math.round((numLoaded/numResources)*100)+"%";
 	}
 
 	this.gameover.oncanplay = function() {
@@ -60,6 +62,12 @@ var resourceRepository = new function() {
 	this.box.onload = function() {
 		imageLoaded();
 	}
+	this.button.onload = function() {
+		imageLoaded();
+	}
+	this.menu.onload = function() {
+		imageLoaded();
+	}
 	this.font.onload = function() {
 		imageLoaded();
 	}
@@ -68,6 +76,8 @@ var resourceRepository = new function() {
 	this.background.src = "images/background.png";
 	this.box.src = "images/box.png";
 	this.logo.src = "images/rubikrpg.png";
+	this.menu.src = "images/menu.png";
+	this.button.src = "images/button.png";
 
 	this.tileSheet.src = "images/tiles.png";
 	this.spriteSheet.src = "images/sprites.png";
