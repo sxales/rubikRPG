@@ -117,16 +117,16 @@ var Stage = function Stage() {
 	};
 
 	this.touchstart = function(evt) {
-		if (evt.touches[0].clientY < _height*SCREENRATIO) {
+		if (evt.touches[0].pageY < _height*SCREENRATIO) {
 			btndown = new Date();
 		}
 	};
 
 	this.touchend = function(evt) {
-		if (evt.touches[0].clientY < _height*SCREENRATIO) {
+		if (evt.touches[0].pageY < _height*SCREENRATIO) {
 			var btnup = new Date();
-			if (btndown > 0 && btnup - btndown >= 500) this.rightClick(evt.touches[0].clientX, evt.touches[0].clientY);//long press
-			else this.click(evt.touches[0].clientX, evt.touches[0].clientY); //left click
+			if (btndown > 0 && btnup - btndown >= 500) this.rightClick(evt.touches[0].pageX, evt.touches[0].pageY);//long press
+			else this.click(evt.touches[0].pageX, evt.touches[0].pageY); //left click
 			btndown = 0;
 		}
 	};
