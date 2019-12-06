@@ -16,27 +16,35 @@ var Game = function Game() {
 
 		window.addEventListener("keydown", function(evt) { currentScene.keydown(evt); }, false);
 		this.spriteCanvas.addEventListener("mousedown", function(evt) {
+			evt.preventDefault();
 			currentScene.mousedown(evt);
 		}, false);
 		this.spriteCanvas.addEventListener("mouseup", function(evt) {
+			evt.preventDefault();
 			currentScene.mouseup(evt);
 		}, false);
 		this.spriteCanvas.addEventListener("moustout", function(evt) {
+			evt.preventDefault();
 			currentScene.mouseout(evt);
 		}, false);
 		this.spriteCanvas.addEventListener("mousemove", function(evt) {
+			evt.preventDefault();
 			currentScene.mousemove(evt);
 		}, false);
 		this.spriteCanvas.addEventListener("touchstart", function(evt) {
+			evt.preventDefault();
 			currentScene.touchstart(evt);
 		}, false);
 		this.spriteCanvas.addEventListener("touchend", function(evt) {
+			evt.preventDefault();
 			currentScene.touchend(evt);
 		}, false);
 		this.spriteCanvas.addEventListener("touchcancel", function(evt) {
+			evt.preventDefault();
 			currentScene.touchcancel(evt);
 		}, false);
 		this.spriteCanvas.addEventListener("touchmove", function(evt) {
+			evt.preventDefault();
 			currentScene.touchmove(evt);
 		}, false);
 		this.spriteCanvas.addEventListener("contextmenu", function(evt) { evt.preventDefault(); }, false);
