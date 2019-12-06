@@ -117,13 +117,13 @@ var Stage = function Stage() {
 	};
 
 	this.touchstart = function(evt) {
-		if (inputY < _height*SCREENRATIO) {
+		if (evt.touches[0].clientY < _height*SCREENRATIO) {
 			btndown = new Date();
 		}
 	};
 
 	this.touchend = function(evt) {
-		if (inputY < _height*SCREENRATIO) {
+		if (evt.touches[0].clientY < _height*SCREENRATIO) {
 			var btnup = new Date();
 			if (btndown > 0 && btnup - btndown >= 500) this.rightClick(evt.touches[0].clientX, evt.touches[0].clientY);//long press
 			else this.click(evt.touches[0].clientX, evt.touches[0].clientY); //left click
@@ -421,6 +421,8 @@ var Stage = function Stage() {
 	};
 
 	this.draw = function(ctx) {
+		ctx.clearRect(0, 0, _width, _height);
+
 		//draw the model
 		var width = _width / model.getWidth();
 		var height = (_height*SCREENRATIO) / model.getHeight();
@@ -502,7 +504,8 @@ var Stage = function Stage() {
 		}
 
 		//draw scoreboard
-		ctx.clearRect(0, (_height*SCREENRATIO), _width, (_height*(1-SCREENRATIO)));
+		//ctx.clearRect(0, (_height*SCREENRATIO), _width, (_height*(1-SCREENRATIO)));
+
 
 		var fs = _height*(1-SCREENRATIO) / 6;
 		var margin = fs;
