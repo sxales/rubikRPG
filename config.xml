@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.vynemedia.rubikRPG" version="2.25" xmlns="http://www.w3.org/ns/widgets">
+  <name>rubik RPG v3</name>
+  <description>©2019 vynemedia</description>
+  <author email="trevorrjohnson@gmail.com" href="http://www.trevorrjohnson.com">Amazing App Team</author>
+  <preference name="phonegap-version" value="cli-6.3.0" />
+  <preference name="permissions" value="none" />
+  <preference name="orientation" value="portrait" />
+  <preference name="target-device" value="universal" />
+  <preference name="fullscreen" value="false" />
+
+  <plugin name="cordova-plugin-inappbrowser" spec="1.3.0" />
+  <plugin name="cordova-plugin-device" spec="1.1.2" />
+  <plugin name="cordova-plugin-splashscreen" spec="3.2.2" />
+
+  <icon src="images/favicon.ico" />
+</widget>
