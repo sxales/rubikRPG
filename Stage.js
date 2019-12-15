@@ -148,8 +148,21 @@ var Stage = function Stage() {
 	};
 
 	this.touchstart = function(evt) {
-		if (evt.touches[0].pageY < _height*SCREENRATIO) {
-			btndown =  window.setTimeout(rightClick, 500, evt.touches[0].pageX, evt.touches[0].pageY);//long press
+		if (state == SAVE) {
+			if (check_collision(btnload, evt.touches[0].pageX, evt.touches[0].pageY)) {
+				load();
+				reset();
+				state = WAITING;
+			}
+			else if (check_collision(btnnew, evt.touches[0].pageX, evt.touches[0].pageY)) {
+				localStorage.clear();
+				state = WAITING;
+			}
+		}
+		else {
+			if (evt.touches[0].pageY < _height*SCREENRATIO) {
+				btndown =  window.setTimeout(rightClick, 500, evt.touches[0].pageX, evt.touches[0].pageY);//long press
+			}
 		}
 	};
 
