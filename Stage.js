@@ -8,7 +8,7 @@ var Stage = function Stage() {
 	var summons = 0, deaths = 0;
 	var oldbalance = 0, newbalance = 0;
 	var CHESTVALUE = 50;
-	var WAITING = -1, INPLAY = 0, FAILED = 1, SUCCESS = 2, PAUSED = 3; //states
+	var WAITING = -1, INPLAY = 0, FAILED = 1, SUCCESS = 2, PAUSED = 3; SAVE = 4;//states
 	var BLUE = 5, GRAY = 8, GREEN = 4, RED = 3, SUPER = 2, WHITE = 1, TEAL = 5, YELLOW = 6, PINK = 7, LOGO = 0; //font colors
 	var FONTSIZE = 40;
 	var BASIC = 1,  INTERMEDIATE = 2, ADVANCED = 3, BOSS = 4, MAGE = 5, CHEST = 6, EMPTY = -1; //enemy types
@@ -40,12 +40,14 @@ var Stage = function Stage() {
 	var TRAPPEDCHESTDAMAGE = .75;
 	var atkloss = 0, defloss = 0, spdloss = 0, rcvloss = 0;
 	var subscribers = new Array();
+	var btnnew = new Button();
+	var btnload = new Button();
 
-	this.subscribe = function(s) {
+	subscribe = function(s) {
 		subscribers.push(s);
 	};
 
-	this.unsubscribe = function(s) {
+	unsubscribe = function(s) {
 		for (var i = 0; i<subscribers.length; i++) {
 			if (subscribers[i] == s) {
 				subscribers.splice(i);
@@ -54,7 +56,7 @@ var Stage = function Stage() {
 		}
 	};
 
-	this.notify = function(b) {
+	notify = function(b) {
 		for (var i = 0; i<subscribers.length; i++) {
 			subscribers[i].call(this,b);
 		}
@@ -64,14 +66,22 @@ var Stage = function Stage() {
 		_height = h;
 		_width = w;
 
-		this.setVolume(volume);
+		setVolume(volume);
 
-		displayedxp = 0;
 		oldbalance = 0;
 		enemiesdeafeated = 0;
+		stage = 0;
+		summons = 0;
+		deaths = 0;
 		player = {hp: MINHP, currenthp: MINHP, xp: 1, currentxp : 0, atk: MINATK, def: MINDEF, spd: MINSPD, rcv: MINRCV, act: 99, spl: 0};
 
-		this.reset();
+		displayedxp = 0;
+
+		reset();
+
+		if (typeof(Storage) !== "undefined") {
+			if (Number(localStorage.getItem("hp")) > MINHP) state = SAVE;
+		}
 	};
 
 	this.keydown = function(evt) {
@@ -86,7 +96,7 @@ var Stage = function Stage() {
 			newbalance = 0;
 			stage = 0;
 			player = {hp: MINHP, currenthp: MINHP, xp: 1, currentxp : 0, atk: MINATK, def: MINDEF, spd: MINSPD, rcv: MINRCV, act: 99, spl: 0};
-			this.reset();
+			reset();
 		}
 		else if (evt.key == "m") {
 			mute = !mute;
@@ -96,21 +106,34 @@ var Stage = function Stage() {
 	this.mousedown = function(evt) {
 		if (evt.clientY < _height*SCREENRATIO) {
 			if (evt.button == 0) {
-				btndown = new Date();
+				btndown =  window.setTimeout(rightClick, 500, evt.clientX, evt.clientY);//long press
 			}
 		}
 	};
 
 	this.mouseup = function(evt) {
 		var size = _width / (model.getWidth()*2);
+		if (btndown) window.clearTimeout(btndown);
 		if (evt.clientY < _height*SCREENRATIO) {
-			if (evt.button == 0) {
-				var btnup = new Date();
-				if (btndown > 0 && btnup - btndown >= 500) this.rightClick(evt.clientX, evt.clientY);//long press
-				else this.click(evt.clientX, evt.clientY); //left click
-				btndown = 0;
+			if (state == SAVE) {
+				if (evt.button == 0) {
+					if (check_collision(btnload, evt.clientX, evt.clientY)) {
+						load();
+						reset();
+						state = WAITING;
+					}
+					else if (check_collision(btnnew, evt.clientX, evt.clientY)) {
+						localStorage.clear();
+						state = WAITING;
+					}
+				}
 			}
-			else this.rightClick(evt.clientX, evt.clientY);
+			else {
+				if (evt.button == 0) {
+					click(evt.clientX, evt.clientY); //left click
+				}
+				else rightClick(evt.clientX, evt.clientY);
+			}
 		}
 		/*else if (evt.clientY >_height-size && evt.clientX >_width-size) {
 					state = PAUSED
@@ -118,6 +141,7 @@ var Stage = function Stage() {
 	};
 
 	this.mouseout = function(evt) {
+		if (btndown) window.clearTimeout(btndown);
 	};
 
 	this.mousemove = function(evt) {
@@ -125,17 +149,15 @@ var Stage = function Stage() {
 
 	this.touchstart = function(evt) {
 		if (evt.touches[0].pageY < _height*SCREENRATIO) {
-			btndown = new Date();
+			btndown =  window.setTimeout(rightClick, 500, evt.touches[0].pageX, evt.touches[0].pageY);//long press
 		}
 	};
 
 	this.touchend = function(evt) {
 		var size = _width / (model.getWidth()*2);
+		if (btndown) window.clearTimeout(btndown);
 		if (evt.changedTouches[0].pageY < _height*SCREENRATIO) {
-			var btnup = new Date();
-			if (btndown > 0 && btnup - btndown >= 500) this.rightClick(evt.changedTouches[0].pageX, evt.changedTouches[0].pageY);//long press
-			else this.click(evt.changedTouches[0].pageX, evt.changedTouches[0].pageY); //left click
-			btndown = 0;
+			click(evt.changedTouches[0].pageX, evt.changedTouches[0].pageY); //left click
 		}
 		/*else if (evt.changedTouches[0].pageY >_height-size && evt.changedTouches[0].pageX >_width-size) {
 			state = PAUSED
@@ -143,12 +165,13 @@ var Stage = function Stage() {
 	};
 
 	this.touchcancel = function(evt) {
+		if (btndown) window.clearTimeout(btndown);
 	};
 
 	this.touchmove = function(evt) {
 	};
 
-	this.rightClick = function(inputX, inputY) {
+	rightClick = function(inputX, inputY) {
 		if (state == INPLAY && player.spl >= 100) {
 			var width = _width / model.getWidth();
 			var height = (_height*SCREENRATIO) / model.getHeight();
@@ -176,7 +199,7 @@ var Stage = function Stage() {
 		//else do nothing
 	};
 
-	this.click  = function(inputX, inputY) {
+	click  = function(inputX, inputY) {
 		if (state == WAITING) {
 			oldbalance = newbalance;
 			enemiesdefeated += newenemies;
@@ -215,7 +238,7 @@ var Stage = function Stage() {
 				}
 				enemy.currenthp -= Math.round(d);
 
-				if (!this.isInjured(x,y)) {
+				if (!isInjured(x,y)) {
 					var p = new Point();
 					p = {x: x,y: y};
 					injured.push(p);
@@ -491,7 +514,7 @@ var Stage = function Stage() {
 			for(var i=0; i<mages.length; i++) {
 				var mage = model.get(mages[i].x, mages[i].y);
 				var fs = _width / model.getWidth() / 2;
-				this.writeMessage(ctx, (9-Math.floor(mage.act/10)), WHITE, mages[i].x*(_width / model.getWidth()) + (fs/2), mages[i].y*((_height*SCREENRATIO) / model.getHeight()) + (fs/2), fs);
+				writeMessage(ctx, (9-Math.floor(mage.act/10)), WHITE, mages[i].x*(_width / model.getWidth()) + (fs/2), mages[i].y*((_height*SCREENRATIO) / model.getHeight()) + (fs/2), fs);
 			}
 		}
 
@@ -502,16 +525,16 @@ var Stage = function Stage() {
 				var fs = _width / model.getWidth() / 4;
 				switch (Math.floor(chest.act%4)) {
 					case 0:
-						this.writeMessage(ctx, "x5", WHITE, chests[i].x*(_width / model.getWidth()) + (fs), chests[i].y*((_height*SCREENRATIO) / model.getHeight()) + (fs*3/2), fs);
+						writeMessage(ctx, "x5", WHITE, chests[i].x*(_width / model.getWidth()) + (fs), chests[i].y*((_height*SCREENRATIO) / model.getHeight()) + (fs*3/2), fs);
 						break;
 					case 1:
-						this.writeMessage(ctx, "x2", WHITE, chests[i].x*(_width / model.getWidth()) + (fs), chests[i].y*((_height*SCREENRATIO) / model.getHeight()) + (fs*3/2), fs);
+						writeMessage(ctx, "x2", WHITE, chests[i].x*(_width / model.getWidth()) + (fs), chests[i].y*((_height*SCREENRATIO) / model.getHeight()) + (fs*3/2), fs);
 						break;
 					case 2:
-						this.writeMessage(ctx, "x1", WHITE, chests[i].x*(_width / model.getWidth()) + (fs), chests[i].y*((_height*SCREENRATIO) / model.getHeight()) + (fs*3/2), fs);
+						writeMessage(ctx, "x1", WHITE, chests[i].x*(_width / model.getWidth()) + (fs), chests[i].y*((_height*SCREENRATIO) / model.getHeight()) + (fs*3/2), fs);
 						break;
 					case 3:
-						this.writeMessage(ctx, "bad", WHITE, chests[i].x*(_width / model.getWidth()) + (fs/2), chests[i].y*((_height*SCREENRATIO) / model.getHeight()) + (fs*3/2), fs);
+						writeMessage(ctx, "bad", WHITE, chests[i].x*(_width / model.getWidth()) + (fs/2), chests[i].y*((_height*SCREENRATIO) / model.getHeight()) + (fs*3/2), fs);
 						break;
 				}
 			}
@@ -525,15 +548,15 @@ var Stage = function Stage() {
 		var margin = fs;
 		var buffer = fs/2;
 		var position = _height*SCREENRATIO + margin;
-		this.writeMessage(ctx, "hp", WHITE, margin, position, fs);
-		this.writeMessage(ctx, "exp", WHITE, margin, position+(3*fs/2), fs);
-		this.writeMessage(ctx, "spl", WHITE, margin, position+fs*3, fs);
+		writeMessage(ctx, "hp", WHITE, margin, position, fs);
+		writeMessage(ctx, "exp", WHITE, margin, position+(3*fs/2), fs);
+		writeMessage(ctx, "spl", WHITE, margin, position+fs*3, fs);
 
 		var offset = _width-margin-fs*7-buffer;
-		this.writeMessage(ctx, "atk", WHITE, offset+margin, position, fs);
-		this.writeMessage(ctx, "def", WHITE, offset+margin, position+fs, fs);
-		this.writeMessage(ctx, "spd", WHITE, offset+margin, position+fs*2, fs);
-		this.writeMessage(ctx, "rcv", WHITE, offset+margin, position+fs*3, fs);
+		writeMessage(ctx, "atk", WHITE, offset+margin, position, fs);
+		writeMessage(ctx, "def", WHITE, offset+margin, position+fs, fs);
+		writeMessage(ctx, "spd", WHITE, offset+margin, position+fs*2, fs);
+		writeMessage(ctx, "rcv", WHITE, offset+margin, position+fs*3, fs);
 
 		var l = offset - buffer*2 - (fs*3);
 		var percent = player.currenthp/player.hp;
@@ -554,14 +577,14 @@ var Stage = function Stage() {
 			else ctx.fillStyle="#eb1c23"; //red
 			ctx.fillRect(margin+buffer+(fs*3)+bezel, position+bezel, l*percent-bezel*2, fs-bezel*2); //inner box
 		}
-		//var hp = this.zeroFill(Math.round(player.currenthp), (""+player.hp).length);
-		//this.writeMessage(ctx, hp, WHITE, margin+buffer+(fs*3)+l-(fs*hp.length), position, fs);
+		//var hp = zeroFill(Math.round(player.currenthp), (""+player.hp).length);
+		//writeMessage(ctx, hp, WHITE, margin+buffer+(fs*3)+l-(fs*hp.length), position, fs);
 		//ticking xp
 		if (++displayedxp > player.currentxp/player.xp*100) displayedxp = player.currentxp/player.xp*100;
 		if (displayedxp >= 100) {
 			player.currentxp -= player.xp;
 			displayedxp = 0;
-			this.levelup();
+			levelup();
 			if (!mute) resourceRepository.levelup.play();
 		}
 		percent = displayedxp/100;
@@ -593,10 +616,10 @@ var Stage = function Stage() {
 			ctx.fillRect(margin+buffer+(fs*3)+bezel, position+fs*3+bezel, l*percent-bezel*2, fs-bezel*2); //inner box
 		}
 
-		this.writeMessage(ctx, player.atk, WHITE, offset+margin+buffer+(fs*3), position, fs);
-		this.writeMessage(ctx, player.def, WHITE, offset+margin+buffer+(fs*3), position+fs, fs);
-		this.writeMessage(ctx, player.spd, WHITE, offset+margin+buffer+(fs*3), position+(fs*2), fs);
-		this.writeMessage(ctx, player.rcv, WHITE, offset+margin+buffer+(fs*3), position+(fs*3), fs);
+		writeMessage(ctx, player.atk, WHITE, offset+margin+buffer+(fs*3), position, fs);
+		writeMessage(ctx, player.def, WHITE, offset+margin+buffer+(fs*3), position+fs, fs);
+		writeMessage(ctx, player.spd, WHITE, offset+margin+buffer+(fs*3), position+(fs*2), fs);
+		writeMessage(ctx, player.rcv, WHITE, offset+margin+buffer+(fs*3), position+(fs*3), fs);
 
 		//draw messages
 		if (state == INPLAY) {
@@ -608,7 +631,7 @@ var Stage = function Stage() {
 					else {
 						var move = _height/350;
 						messages[i].y -= move;
-						this.writeMessage(ctx, messages[i].message, messages[i].type, messages[i].x, messages[i].y, messages[i].s);
+						writeMessage(ctx, messages[i].message, messages[i].type, messages[i].x, messages[i].y, messages[i].s);
 					}
 
 					if (messages[i].ticks++ >= messages[i].duraction) messages.splice(i--, 1); //remove
@@ -627,184 +650,173 @@ var Stage = function Stage() {
 			var txt = "tap to begin";
 			if (stage > 0) txt = "tap to continue";
 			var fs = _width / (txt.length+2);
-			if (Math.round(_frame/5)% 2 == 1) this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, _height*SCREENRATIO/2 + h/2 + fs*2, fs);
+			if (Math.round(_frame/5)% 2 == 1) writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, _height*SCREENRATIO/2 + h/2 + fs*2, fs);
 
-			if (stage == 0) {
-				//tutorial
-				fs = Math.floor(w/20);
-				var buffer = fs/2;
-				var starth = _height*SCREENRATIO/2 - h/2;
-				if (tutorial < 50) {
-					var txt = "how to play";
-					this.writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(1/2)), fs);
-					var txt = "tap to attack";
-					this.writeMessage(ctx, txt, PINK, (_width-fs*txt.length)/2, starth + (fs*(2)), fs);
+			var interval = 25;
 
-					var txt = "when the SPL bar is";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(7/2)), fs);
-					var txt = "full, long-press";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(9/2)), fs);
-					var txt = "to petrify nearby";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(11/2)), fs);
-					var txt = "enemies";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(13/2)), fs);
+			//tutorial
+			fs = Math.floor(w/20);
+			var buffer = fs/2;
+			var starth = _height*SCREENRATIO/2 - h/2;
+			if (tutorial/interval < 1) {
+				var txt = "how to play";
+				writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(1/2)), fs);
+				var txt = "tap to attack";
+				writeMessage(ctx, txt, PINK, (_width-fs*txt.length)/2, starth + (fs*(2)), fs);
 
-					var txt = "Item Chest";
-					this.writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(8)), fs);
+				var txt = "watch your health";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(7/2)), fs);
+				var txt = "bar, enemies tend";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(9/2)), fs);
+				var txt = "to attack back";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(11/2)), fs);
 
-					var index = 17;//brown
-					ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+1, 64*Math.floor(index/8)+1, 63, 63, w/2 - fs/2, starth + (fs*(37/4)), fs*3, fs*3);
+				var txt = "Item Chest";
+				writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(8)), fs);
 
-					var txt = "tap chests for";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(25/2)), fs);
-					var txt = "bonuses but lookout";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(27/2)), fs);
-					var txt = "for trapped chests";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(29/2)), fs);
-				}
-				else if (tutorial < 100) {
-					var txt = "Soldier";
-					this.writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(1/2)), fs);
+				var index = 17;//brown
+				ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+1, 64*Math.floor(index/8)+1, 63, 63, w/2 - fs/2, starth + (fs*(37/4)), fs*3, fs*3);
 
-					var index = 23;//black
-					ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+1, 64*Math.floor(index/8)+1, 63, 63, w/2 - fs/2, starth + (fs*(7/4)), fs*3, fs*3);
-
-					var txt = "The weakest enemy";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(5)), fs);
-					var txt = "7 out of 10 enemies";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(6)), fs);
-					var txt = "in the dungeon";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(7)), fs);
-
-					var txt = "Advanced Soldier";
-					this.writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(8)), fs);
-
-					var index = 5;//green
-					ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+1, 64*Math.floor(index/8)+1, 63, 63, w/2 - fs/2, starth + (fs*(37/4)), fs*3, fs*3);
-
-					var txt = "2nd weakest enemy";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(25/2)), fs);
-					var txt = "2 out of 10 enemies";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(27/2)), fs);
-					var txt = "in the dungeon";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(29/2)), fs);
-				}
-				else if (tutorial < 150) {
-					var txt = "Commander";
-					this.writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(1/2)), fs);
-
-					var index = 2;//gold
-					ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+1, 64*Math.floor(index/8)+1, 63, 63, w/2 - fs/2, starth + (fs*(7/4)), fs*3, fs*3);
-
-					var txt = "A strong enemy.";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(5)), fs);
-					var txt = "Unlocks the boss";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(6)), fs);
-					var txt = "when defeated";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(7)), fs);
-
-					var txt = "Mage";
-					this.writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(8)), fs);
-
-					var index = 14;//purple
-					ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+1, 64*Math.floor(index/8)+1, 63, 63, w/2 - fs/2, starth + (fs*(37/4)), fs*3, fs*3);
-
-					var txt = "A mage ressurects";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(25/2)), fs);
-					var txt = "fallen comrades even";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(27/2)), fs);
-					var txt = "himself if need be";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(29/2)), fs);
-				}
-				else if (tutorial < 200) {
-					var txt = "Boss";
-					this.writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(1/2)), fs);
-
-					var index = 10;//blue
-					ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+1, 64*Math.floor(index/8)+1, 63, 63, w/2 - fs/2, starth + (fs*(7/4)), fs*3, fs*3);
-
-					var txt = "The strongest enemy";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(5)), fs);
-					var txt = "Only 1 per dungeon";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(6)), fs);
-					var txt = "The boss wont fight";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(7)), fs);
-					var txt = " until a Commander";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(8)), fs);
-					var txt = "is defeated";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(9)), fs);
-					var txt = "He gets a boost for";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(10)), fs);
-					var txt = "each enemy left";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(11)), fs);
-
-					var txt = "Defeat the boss to";
-					this.writeMessage(ctx, txt, PINK, (_width-fs*txt.length)/2, starth + (fs*(13)), fs);
-					var txt = "clear the dungeon";
-					this.writeMessage(ctx, txt, PINK, (_width-fs*txt.length)/2, starth + (fs*(14)), fs);
-				}
-				else tutorial = 0;
+				var txt = "tap chests for";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(25/2)), fs);
+				var txt = "loot but lookout";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(27/2)), fs);
+				var txt = "for trapped chests";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(29/2)), fs);
 			}
-			else {
-				fs = Math.floor(w/20);
-				var buffer = fs/2;
-				var starth = _height*SCREENRATIO/2 - h/2;
+			else if (tutorial/interval < 2) {
+				var txt = "how to play";
+				writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(1/2)), fs);
+				var txt = "when the special";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(2)), fs);
+				var txt = "bar is full";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(3)), fs);
+				var txt = "long press to";
+				writeMessage(ctx, txt, PINK, (_width-fs*txt.length)/2, starth + (fs*(9/2)), fs);
+				var txt = "petrify enemies";
+				writeMessage(ctx, txt, PINK, (_width-fs*txt.length)/2, starth + (fs*(11/2)), fs);
 
-				if (tutorial < 50) {
-					var txt = "The further down";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(1)), fs);
-					var txt = "you go, the";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(2)), fs);
-					var txt = "stronger enemies";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(3)), fs);
-					var txt = "get and the more";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(4)), fs);
-					var txt = "mages that show up";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(5)), fs);
+				var txt = "Petrified Enemies";
+				writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(8)), fs);
 
-					var txt = "tip";
-					this.writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(13/2)), fs);
+				var index = 22;//gray
+				ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+1, 64*Math.floor(index/8)+1, 63, 63, w/2 - fs/2, starth + (fs*(37/4)), fs*3, fs*3);
 
-					var index = 14;//purple
-					ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+1, 64*Math.floor(index/8)+1, 63, 63, w/2 - fs/2, starth + (fs*(8)), fs*3, fs*3);
-
-					var txt = "mages cannot";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(23/2)), fs);
-					var txt = "ressurect enemies";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(25/2)), fs);
-					var txt = "when petrified";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(27/2)), fs);
-				}
-				else if (tutorial < 100) {
-					var txt = "how to play";
-					this.writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(1/2)), fs);
-					var txt = "tap to attack";
-					this.writeMessage(ctx, txt, PINK, (_width-fs*txt.length)/2, starth + (fs*(2)), fs);
-
-					var txt = "when the SPL bar is";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(7/2)), fs);
-					var txt = "full, long-press";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(9/2)), fs);
-					var txt = "to petrify nearby";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(11/2)), fs);
-					var txt = "enemies";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(13/2)), fs);
-
-					var txt = "Petrified Enemies";
-					this.writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(8)), fs);
-
-					var index = 22;//gray
-					ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+1, 64*Math.floor(index/8)+1, 63, 63, w/2 - fs/2, starth + (fs*(37/4)), fs*3, fs*3);
-
-					var txt = "petrified enemies";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(25/2)), fs);
-					var txt = "cannot heal or";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(27/2)), fs);
-					var txt = "be attacked";
-					this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(29/2)), fs);
-				}
-				else tutorial = 0;
+				var txt = "petrified enemies";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(25/2)), fs);
+				var txt = "cannot heal or";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(27/2)), fs);
+				var txt = "be attacked";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(29/2)), fs);
 			}
+			else if (tutorial/interval < 3) {
+				var txt = "Soldier";
+				writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(1/2)), fs);
+
+				var index = 23;//black
+				ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+1, 64*Math.floor(index/8)+1, 63, 63, w/2 - fs/2, starth + (fs*(7/4)), fs*3, fs*3);
+
+				var txt = "A weak enemy,";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(5)), fs);
+				var txt = "The most common";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(6)), fs);
+				var txt = "in the dungeon";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(7)), fs);
+
+				var txt = "Advanced Soldier";
+				writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(8)), fs);
+
+				var index = 5;//green
+				ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+1, 64*Math.floor(index/8)+1, 63, 63, w/2 - fs/2, starth + (fs*(37/4)), fs*3, fs*3);
+
+				var txt = "stronger than a";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(25/2)), fs);
+				var txt = "regular soldier";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(27/2)), fs);
+				var txt = "but less common";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(29/2)), fs);
+			}
+			else if (tutorial/interval < 4) {
+				var txt = "Commander";
+				writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(1/2)), fs);
+
+				var index = 2;//gold
+				ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+1, 64*Math.floor(index/8)+1, 63, 63, w/2 - fs/2, starth + (fs*(7/4)), fs*3, fs*3);
+
+				var txt = "A strong enemy.";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(5)), fs);
+				var txt = "Unlocks the boss";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(6)), fs);
+				var txt = "when defeated";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(7)), fs);
+
+				var txt = "Mage";
+				writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(8)), fs);
+
+				var index = 14;//purple
+				ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+1, 64*Math.floor(index/8)+1, 63, 63, w/2 - fs/2, starth + (fs*(37/4)), fs*3, fs*3);
+
+				var txt = "Also strong,";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(25/2)), fs);
+				var txt = "A mage summons";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(27/2)), fs);
+				var txt = "reinforcements";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(29/2)), fs);
+			}
+			else if (tutorial/interval < 5) {
+				var txt = "Boss";
+				writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(1/2)), fs);
+
+				var index = 10;//blue
+				ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+1, 64*Math.floor(index/8)+1, 63, 63, w/2 - fs/2, starth + (fs*(7/4)), fs*3, fs*3);
+
+				var txt = "The strongest enemy";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(5)), fs);
+				var txt = "Only 1 per dungeon";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(13/2)), fs);
+				var txt = "The Boss is";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(8)), fs);
+				var txt = "stronger the more";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(9)), fs);
+				var txt = "enemies that remain";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(10)), fs);
+
+				var txt = "Defeat the boss";
+				writeMessage(ctx, txt, PINK, (_width-fs*txt.length)/2, starth + (fs*(12)), fs);
+				var txt = "to clear";
+				writeMessage(ctx, txt, PINK, (_width-fs*txt.length)/2, starth + (fs*(13)), fs);
+				var txt = "the dungeon";
+				writeMessage(ctx, txt, PINK, (_width-fs*txt.length)/2, starth + (fs*(14)), fs);
+
+			}
+			else if (tutorial/interval < 6) {
+				var txt = "Be careful";
+				writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(1/2)), fs);
+				var txt = "The further down";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(2)), fs);
+				var txt = "you go the";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(3)), fs);
+				var txt = "stronger enemies";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(4)), fs);
+				var txt = "get and the more";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(5)), fs);
+				var txt = "mages show up";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(6)), fs);
+
+				var txt = "tip";
+				writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(8)), fs);
+
+				var index = 14;//purple
+				ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+1, 64*Math.floor(index/8)+1, 63, 63, w/2 - fs/2, starth + (fs*(37/4)), fs*3, fs*3);
+
+				var txt = "mages cannot";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(25/2)), fs);
+				var txt = "summon enemies";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(27/2)), fs);
+				var txt = "when petrified";
+				writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(29/2)), fs);
+			}
+			else tutorial = 0;
 		}
 		else if (state == PAUSED) {
 			var w = _width*.9;
@@ -813,28 +825,39 @@ var Stage = function Stage() {
 			ctx.drawImage(resourceRepository.logo, margin, _height*SCREENRATIO/2 - h/2 - w*.29, w, w*.19);
 			var txt = "tap to resume";
 			var fs = _width / (txt.length+2);
-			if (Math.round(_frame/5)% 2 == 1) this.writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, _height*SCREENRATIO/2 + h/2 + fs*2, fs);
+			if (Math.round(_frame/5)% 2 == 1) writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, _height*SCREENRATIO/2 + h/2 + fs*2, fs);
 			var txt = "paused";
 			var fs = _width / (txt.length+2);
-			this.writeMessage(ctx, txt, SUPER, (_width-fs*txt.length)/2, _height*SCREENRATIO/2 - fs/2, fs);
+			writeMessage(ctx, txt, SUPER, (_width-fs*txt.length)/2, _height*SCREENRATIO/2 - fs/2, fs);
 		}
 		else if (state == FAILED) {
 			var txt = "penalty";
 			var fs = Math.floor(_width/(txt.length+2));
 			var starty = (_height*SCREENRATIO-fs*6)/2;
 			var startx = (_width-(fs*txt.length))/2;
-			this.writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty, fs);
+			writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty, fs);
 
 			txt = atkloss+" atk";
-			this.writeMessage(ctx, txt, RED,(_width-(fs*txt.length))/2, starty+fs, fs);
+			writeMessage(ctx, txt, RED,(_width-(fs*txt.length))/2, starty+fs, fs);
 			txt = defloss+" def";
-			this.writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty+fs*2, fs);
+			writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty+fs*2, fs);
 			txt = spdloss+" spd";
-			this.writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty+fs*3, fs);
+			writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty+fs*3, fs);
 			txt = rcvloss+" rcv";
-			this.writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty+fs*4, fs);
+			writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty+fs*4, fs);
 			txt = (newbalance-oldbalance)+" gld";
-			this.writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty+fs*5, fs);
+			writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty+fs*5, fs);
+
+			fs = Math.floor((_width*.9)/16);
+
+			if (typeof(Storage) !== "undefined") {
+				txt = "saving...";
+				if (Math.round(_frame/5)% 2 == 1) writeMessage(ctx, txt, WHITE, _width-(fs*(txt.length)), _height*SCREENRATIO-fs*(3/2), fs);
+			}
+			else {
+				txt = "saving failed";
+				writeMessage(ctx, txt, RED, _width-(fs*(txt.length)), _height*SCREENRATIO-fs*(3/2), fs);
+			}
 
 			if (_frame > 24) {
 				//death penalty
@@ -861,8 +884,9 @@ var Stage = function Stage() {
 				*/
 				_frame = 0;
 				deaths++;
-				//this.notify(false); //stage failed
-				this.reset();
+				save();
+				//notify(false); //stage failed
+				reset();
 			}
 		}
 		else if (state == SUCCESS) {
@@ -870,7 +894,7 @@ var Stage = function Stage() {
 			//var fs = Math.floor(_width/(txt.length+1));
 			//var starty = (_height*SCREENRATIO-fs)/2;
 			//var startx = (_width-(fs*txt.length))/2;
-			//this.writeMessage(ctx, txt, SUPER, startx, starty, fs);
+			//writeMessage(ctx, txt, SUPER, startx, starty, fs);
 			var w = _width*.9;
 			var h = w * .8
 			var margin = _width*.05;
@@ -882,37 +906,44 @@ var Stage = function Stage() {
 			var starth = _height*SCREENRATIO/2 - h/2;
 
 			var txt = "dungeon cleared";
-			this.writeMessage(ctx, txt, SUPER, (_width-fs*txt.length)/2, starth + (fs*(1/2)), fs);
+			writeMessage(ctx, txt, SUPER, (_width-fs*txt.length)/2, starth + (fs*(1/2)), fs);
 
 			var txt = "floors";
-			this.writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(5/2)), fs);
+			writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(5/2)), fs);
 			txt = ""+(stage+1);
-			this.writeMessage(ctx, txt, PINK, margin+w-(fs*(txt.length+1)), starth + (fs*(5/2)), fs);
+			writeMessage(ctx, txt, PINK, margin+w-(fs*(txt.length+1)), starth + (fs*(5/2)), fs);
 
 			var txt = "enemies";
-			this.writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(9/2)), fs);
+			writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(9/2)), fs);
 			txt = ""+(enemiesdefeated+newenemies);
-			this.writeMessage(ctx, txt, PINK, margin+w-(fs*(txt.length+1)), starth + (fs*(9/2)), fs);
+			writeMessage(ctx, txt, PINK, margin+w-(fs*(txt.length+1)), starth + (fs*(9/2)), fs);
 
 			var txt = "deaths";
-			this.writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(13/2)), fs);
+			writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(13/2)), fs);
 			txt = ""+deaths;
 			var fc = PINK;
 			if (deaths > 0) fc = RED;
-			this.writeMessage(ctx, txt, fc, margin+w-(fs*(txt.length+1)), starth + (fs*(13/2)), fs);
+			writeMessage(ctx, txt, fc, margin+w-(fs*(txt.length+1)), starth + (fs*(13/2)), fs);
 
 			var txt = "summons";
-			this.writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(17/2)), fs);
+			writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(17/2)), fs);
 			txt = ""+summons;
-			this.writeMessage(ctx, txt, PINK, margin+w-(fs*(txt.length+1)), starth + (fs*(17/2)), fs);
+			writeMessage(ctx, txt, PINK, margin+w-(fs*(txt.length+1)), starth + (fs*(17/2)), fs);
 
 			var txt = "loot";
-			this.writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(21/2)), fs);
+			writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(21/2)), fs);
 			txt = ""+newbalance;
-			this.writeMessage(ctx, txt, YELLOW, margin+w-(fs*(txt.length+1)), starth + (fs*(21/2)), fs);
+			writeMessage(ctx, txt, YELLOW, margin+w-(fs*(txt.length+1)), starth + (fs*(21/2)), fs);
 
+			if (typeof(Storage) !== "undefined") {
+				txt = "saving...";
+				if (Math.round(_frame/5)% 2 == 1) writeMessage(ctx, txt, WHITE, _width-(fs*(txt.length)), _height*SCREENRATIO-fs*(3/2), fs);
+			}
+			else {
+				txt = "saving failed";
+				writeMessage(ctx, txt, RED, _width-(fs*(txt.length)), _height*SCREENRATIO-fs*(3/2), fs);
+			}
 
-			//this.writeMessage(ctx, (5-Math.floor(_frame/5)), SUPER, (_width-fs)/2, (_height-fs)/2 + fs, fs);
 			if (_frame > 25) {
 				stage++;
 				_frame = 0;
@@ -921,9 +952,48 @@ var Stage = function Stage() {
 				basespd = player.spd;
 				basercv = player.rcv;
 				basehp = player.hp;
-				//this.notify(true); //stage cleared
-				this.reset();
+
+				save();
+				//notify(true); //stage cleared
+				reset();
 			}
+		}
+		else if (state == SAVE) {
+			var w = _width*.9;
+			var h = w * .8
+			var margin = _width*.05;
+			ctx.drawImage(resourceRepository.box, margin, _height*SCREENRATIO/2 - h/2, w, h);
+			ctx.drawImage(resourceRepository.logo, margin, _height*SCREENRATIO/2 - h/2 - w*.29, w, w*.19);
+
+			fs = Math.floor(w/20);
+			var buffer = fs/2;
+			var starth = _height*SCREENRATIO/2 - h/2;
+
+			var bh = fs*4;
+			var bw = bh*2;
+			var bb = fs/6;
+
+			var txt = "save found!";
+			writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(1)), fs);
+
+			btnload = { x: (_width-bw)/2, y: starth + (fs*(5/2)), w: bw, h: bh };
+			drawButton(ctx, btnload);
+			var txt = "load";
+			writeMessage(ctx, txt, YELLOW, (_width-fs*txt.length)/2, starth + (fs*(4)), fs);
+
+			btnnew = { x: (_width-bw)/2, y: starth + (fs*(15/2)), w: bw, h: bh, func: 0 };
+			drawButton(ctx, btnnew);
+			var txt = "new";
+			writeMessage(ctx, txt, YELLOW, (_width-fs*txt.length)/2, starth + (fs*(17/2)), fs);
+			var txt = "game";
+			writeMessage(ctx, txt, YELLOW, (_width-fs*txt.length)/2, starth + (fs*(19/2)), fs);
+
+			var txt = "new game";
+			writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(12)), fs);
+			var txt = "will erase";
+			writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(13)), fs);
+			var txt = "previous save";
+			writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(14)), fs);
 		}
 
 		//draw menu button
@@ -934,7 +1004,63 @@ var Stage = function Stage() {
 		}*/
 	};
 
-	this.writeMessage = function(ctx, m, t, x, y, s) {
+	save = function() {
+		if (typeof(Storage) !== "undefined") {
+			// Code for localStorage/sessionStorage.
+			//localStorage.setItem("player", JSON.stringify(player));
+			localStorage.setItem("hp", player.hp);
+			localStorage.setItem("currenthp", player.currenthp);
+			localStorage.setItem("xp", player.xp);
+			localStorage.setItem("currentxp", player.currentxp);
+			localStorage.setItem("spl", player.spl);
+			localStorage.setItem("atk", player.atk);
+			localStorage.setItem("def", player.def);
+			localStorage.setItem("spd", player.spd);
+			localStorage.setItem("rcv", player.rcv);
+			localStorage.setItem("stage", stage);
+			localStorage.setItem("balance", newbalance);
+			localStorage.setItem("deaths", deaths);
+			localStorage.setItem("enemies", (enemiesdefeated+newenemies));
+			localStorage.setItem("summons", summons);
+		}
+		else {
+		  // Sorry! No Web Storage support..
+		}
+	};
+
+	load = function() {
+		player = {hp: Number(localStorage.getItem("hp")), currenthp: Number(localStorage.getItem("currenthp")), xp: Number(localStorage.getItem("xp")), currentxp : Number(localStorage.getItem("currentxp")), atk: Number(localStorage.getItem("atk")), def: Number(localStorage.getItem("def")), spd: Number(localStorage.getItem("spd")), rcv: Number(localStorage.getItem("rcv")), act: 99, spl: Number(localStorage.getItem("spl"))};
+		oldbalance = Number(localStorage.getItem("balance"));
+		enemiesdefeated = Number(localStorage.getItem("enemies"));
+		summons = Number(localStorage.getItem("summons"));
+		deaths = Number(localStorage.getItem("deaths"));
+		stage = Number(localStorage.getItem("stage"));
+
+		baseatk = player.atk;
+		basedef = player.def;
+		basespd = player.spd;
+		basercv = player.rcv;
+		basehp = player.hp;
+	}
+
+	drawButton = function(ctx, b) {
+		var bb = b.h / 24;
+		ctx.strokeStyle="black";
+		ctx.strokeRect(b.x, b.y, b.w, b.h);
+		ctx.fillStyle="white";
+		ctx.fillRect(b.x, b.y, b.w-bb, b.h-bb); //light box
+		ctx.fillStyle="#3e701e"; //dark green
+		ctx.fillRect(b.x+bb, b.y+bb, b.w-bb, b.h-bb); //shadow box
+		ctx.fillStyle="#6cc236"; //green
+		ctx.fillRect(b.x+bb, b.y+bb, b.w-(bb*2), b.h-(2*bb)); //inner box
+	}
+
+	check_collision = function(b, x, y) {
+		if (x > b.x && x < b.x+b.w && y > b.y && y < b.y+b.h) return true;
+		return false;
+	}
+
+	writeMessage = function(ctx, m, t, x, y, s) {
 		var _m = ""+m;
 		var _m = _m.toLowerCase();
 		if (x+ _m.length*s > _width) x = _width-_m.length*s;
@@ -945,7 +1071,7 @@ var Stage = function Stage() {
 		}
 	};
 
-	this.zeroFill = function(n,p) {
+	zeroFill = function(n,p) {
 		var s = ""+n;
 		while (s.length<p) {
 			s = "0"+s;
@@ -953,7 +1079,7 @@ var Stage = function Stage() {
 		return s;
 	};
 
-	this.levelup = function() {
+	levelup = function() {
 		player.xp = Math.ceil(player.xp+XPRATE);
 		player.hp += 7;
 		player.currenthp = player.hp;
@@ -971,7 +1097,7 @@ var Stage = function Stage() {
 		messages.push(m);
 	};
 
-	this.reset = function() {
+	reset = function() {
 		bonus = -1;
 		locked = true;
 		cleared = false;
@@ -986,7 +1112,7 @@ var Stage = function Stage() {
 
 		for (var i=0;i<model.getWidth(); i++) {
 			for (var j=0; j<model.getHeight(); j++) {
-				model.set(i, j, this.generateEnemy());
+				model.set(i, j, generateEnemy());
 			}
 		}
 
@@ -1013,7 +1139,7 @@ var Stage = function Stage() {
 		tutorial = 0;
 	};
 
-	this.generateEnemy = function() {
+	generateEnemy = function() {
 		var temp = new Entity();
 		var t = Math.floor((Math.random()*100)+1);
 		if (t>= 70) {
@@ -1033,7 +1159,7 @@ var Stage = function Stage() {
 		return temp;
 	};
 
-	this.setVolume = function(v) {
+	setVolume = function(v) {
 			volume = v;
 			resourceRepository.gameover.volume = volume;
 			resourceRepository.levelup.volume = volume;
@@ -1043,7 +1169,7 @@ var Stage = function Stage() {
 			resourceRepository.boom.volume = volume;
 	};
 
-	this.isInjured = function(x,y) {
+	isInjured = function(x,y) {
 		var isinjured = false;
 		for(var i=0; i<injured.length; i++) {
 			if (x == injured[i].x && y == injured[i].y) isinjured = true;
@@ -1125,7 +1251,7 @@ var Stage = function Stage() {
 					if (defeated.length > 0) {
 						//summon
 						summons++;
-						model.set(defeated[0].x, defeated[0].y, this.generateEnemy());
+						model.set(defeated[0].x, defeated[0].y, generateEnemy());
 
 						var m = new Message();
 						m = {type: BLUE, message: "summon", x: defeated[0].x*(_width / model.getWidth()), y: defeated[0].y*((_height*SCREENRATIO) / model.getHeight()), s: fs, duration: 2, tick: 0, delay: 0};
