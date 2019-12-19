@@ -1043,7 +1043,7 @@ var Stage = function Stage() {
 
 	load = function() {
 		player = {hp: Number(localStorage.getItem("hp")), currenthp: Number(localStorage.getItem("currenthp")), xp: Number(localStorage.getItem("xp")), currentxp : Number(localStorage.getItem("currentxp")), atk: Number(localStorage.getItem("atk")), def: Number(localStorage.getItem("def")), spd: Number(localStorage.getItem("spd")), rcv: Number(localStorage.getItem("rcv")), act: 99, spl: Number(localStorage.getItem("spl"))};
-		oldbalance = Number(localStorage.getItem("balance"));
+		newbalance = Number(localStorage.getItem("balance"));
 		enemiesdefeated = Number(localStorage.getItem("enemies"));
 		summons = Number(localStorage.getItem("summons"));
 		deaths = Number(localStorage.getItem("deaths"));
