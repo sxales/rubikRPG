@@ -155,12 +155,12 @@ var Stage = function Stage() {
 		if (btndown) window.clearTimeout(btndown);
 		if (evt.changedTouches[0].pageY < _height*SCREENRATIO) {
 			if (state == SAVE) {
-				if (check_collision(btnload, evt.touches[0].pageX, evt.touches[0].pageY)) {
+				if (check_collision(btnload, evt.changedTouches[0].pageX, evt.changedTouches[0].pageY)) {
 					load();
 					reset();
 					state = WAITING;
 				}
-				else if (check_collision(btnnew, evt.touches[0].pageX, evt.touches[0].pageY)) {
+				else if (check_collision(btnnew, evt.changedTouches[0].pageX, evt.changedTouches[0].pageY)) {
 					localStorage.clear();
 					state = WAITING;
 				}
