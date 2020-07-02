@@ -148,6 +148,12 @@ var Stage = function Stage() {
 	};
 
 	this.touchstart = function(evt) {
+		if (evt.touches[0].pageY < _height*SCREENRATIO) {
+			btndown =  window.setTimeout(rightClick, 500, evt.touches[0].pageX, evt.touches[0].pageY);//long press
+		}
+	};
+
+	this.touchend = function(evt) {
 		if (state == SAVE) {
 			if (check_collision(btnload, evt.touches[0].pageX, evt.touches[0].pageY)) {
 				load();
@@ -160,17 +166,11 @@ var Stage = function Stage() {
 			}
 		}
 		else {
-			if (evt.touches[0].pageY < _height*SCREENRATIO) {
-				btndown =  window.setTimeout(rightClick, 500, evt.touches[0].pageX, evt.touches[0].pageY);//long press
+			var size = _width / (model.getWidth()*2);
+			if (btndown) window.clearTimeout(btndown);
+			if (evt.changedTouches[0].pageY < _height*SCREENRATIO) {
+				click(evt.changedTouches[0].pageX, evt.changedTouches[0].pageY); //left click
 			}
-		}
-	};
-
-	this.touchend = function(evt) {
-		var size = _width / (model.getWidth()*2);
-		if (btndown) window.clearTimeout(btndown);
-		if (evt.changedTouches[0].pageY < _height*SCREENRATIO) {
-			click(evt.changedTouches[0].pageX, evt.changedTouches[0].pageY); //left click
 		}
 		/*else if (evt.changedTouches[0].pageY >_height-size && evt.changedTouches[0].pageX >_width-size) {
 			state = PAUSED
