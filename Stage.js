@@ -135,9 +135,6 @@ var Stage = function Stage() {
 				else rightClick(evt.clientX, evt.clientY);
 			}
 		}
-		/*else if (evt.clientY >_height-size && evt.clientX >_width-size) {
-					state = PAUSED
-		}*/
 	};
 
 	this.mouseout = function(evt) {
@@ -154,27 +151,24 @@ var Stage = function Stage() {
 	};
 
 	this.touchend = function(evt) {
-		if (state == SAVE) {
-			if (check_collision(btnload, evt.touches[0].pageX, evt.touches[0].pageY)) {
-				load();
-				reset();
-				state = WAITING;
+		var size = _width / (model.getWidth()*2);
+		if (btndown) window.clearTimeout(btndown);
+		if (evt.changedTouches[0].pageY < _height*SCREENRATIO) {
+			if (state == SAVE) {
+				if (check_collision(btnload, evt.touches[0].pageX, evt.touches[0].pageY)) {
+					load();
+					reset();
+					state = WAITING;
+				}
+				else if (check_collision(btnnew, evt.touches[0].pageX, evt.touches[0].pageY)) {
+					localStorage.clear();
+					state = WAITING;
+				}
 			}
-			else if (check_collision(btnnew, evt.touches[0].pageX, evt.touches[0].pageY)) {
-				localStorage.clear();
-				state = WAITING;
-			}
-		}
-		else {
-			var size = _width / (model.getWidth()*2);
-			if (btndown) window.clearTimeout(btndown);
-			if (evt.changedTouches[0].pageY < _height*SCREENRATIO) {
+			else {
 				click(evt.changedTouches[0].pageX, evt.changedTouches[0].pageY); //left click
 			}
 		}
-		/*else if (evt.changedTouches[0].pageY >_height-size && evt.changedTouches[0].pageX >_width-size) {
-			state = PAUSED
-		}*/
 	};
 
 	this.touchcancel = function(evt) {
