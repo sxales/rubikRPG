@@ -62,8 +62,6 @@ var Game = function Game() {
 			//this.bgCanvas.width = _width;
 			//this.bgCanvas.height = _height;
 
-			this.spriteContext.drawImage(resourceRepository.background, 0, _height*SCREENRATIO, _width, _height*(1-SCREENRATIO));
-
 			stage.init(_width, _height);
 			currentScene = stage;
 
