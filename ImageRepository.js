@@ -1,10 +1,6 @@
 var resourceRepository = new function() {
 	// Define images
 	this.background = new Image();
-	this.logo = new Image();
-	this.box = new Image();
-	this.button = new Image();
-	this.menu = new Image();
 
 	this.tileSheet = new Image();
 	this.spriteSheet = new Image();
@@ -19,7 +15,7 @@ var resourceRepository = new function() {
 	this.boom = new Audio();
 
 	// Ensure all images have loaded before starting the game
-	var numResources = 14;
+	var numResources = 10;
 	var numLoaded = 0;
 	function imageLoaded() {
 		numLoaded++;
@@ -56,32 +52,16 @@ var resourceRepository = new function() {
 	this.spriteSheet.onload = function() {
 		imageLoaded();
 	}
-	this.logo.onload = function() {
-		imageLoaded();
-	}
-	this.box.onload = function() {
-		imageLoaded();
-	}
-	this.button.onload = function() {
-		imageLoaded();
-	}
-	this.menu.onload = function() {
-		imageLoaded();
-	}
 	this.font.onload = function() {
 		imageLoaded();
 	}
 
  	// Set images src
 	this.background.src = "images/background.png";
-	this.box.src = "images/box.png";
-	this.logo.src = "images/rubikrpg.png";
-	this.menu.src = "images/menu.png";
-	this.button.src = "images/button.png";
 
 	this.tileSheet.src = "images/tiles.png";
 	this.spriteSheet.src = "images/sprites.png";
-	this.font.src = "images/font.png";
+	this.font.src = "images/font1.png";
 
 	this.gameover.src = "sounds/gameover.wav";
 	this.levelup.src = "sounds/levelup.wav";

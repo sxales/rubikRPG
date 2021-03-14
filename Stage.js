@@ -4,20 +4,18 @@ var Stage = function Stage() {
 	var _tutorial = 0;
 	var bonus = -1;
 	var stage = 0;
-	var enemiesdefeated = 0, newenemies = 0;
+	var bounties = [5,10,20,50,25];
 	var summons = 0, deaths = 0;
 	var oldbalance = 0, newbalance = 0;
 	var CHESTVALUE = 50;
 	var WAITING = -1, INPLAY = 0, FAILED = 1, SUCCESS = 2, PAUSED = 3; SAVE = 4;//states
-	var BLUE = 5, GRAY = 8, GREEN = 4, RED = 3, SUPER = 2, WHITE = 1, TEAL = 5, YELLOW = 6, PINK = 7, LOGO = 0; //font colors
-	var FONTSIZE = 40;
-	var BASIC = 1,  INTERMEDIATE = 2, ADVANCED = 3, BOSS = 4, MAGE = 5, CHEST = 6, EMPTY = -1; //enemy types
-	var NORMAL = 0, PETRIFIED = 1; //status effects
+	var BLUE = 7, GRAY = 3, GREEN = 6, RED = 5, SUPER = 0, WHITE = 2, YELLOW = 8, PINK = 4, LOGO = 1; //font colors
+	var BASIC = 0,  INTERMEDIATE = 1, ADVANCED = 2, BOSS = 3, MAGE = 4, CHEST = 5, EMPTY = -1; //enemy types
+	var NORMAL = 0, PETRIFIED = 1, FROSTBITE = 3, BURNED = 4, ELECTROCUTED = 2, KNOCKEDDOWN = 5; //status effects
 	var cleared = false;
 	var model = new ArrayList2d();
 	var player = new Entity();
 	var displayedxp = 0;
-	//var cursor = new Cursor();
 	var messages = new Array();
 	var SCREENRATIO = .85;
 	var MENURATIO = .05;
@@ -32,16 +30,17 @@ var Stage = function Stage() {
 	var volume = .2;
 	var locked = true;
 	var btndown;
-	var MINATK = 5; MINDEF = 5, MINSPD = 1; MINRCV = 1, MINHP = 12;
-	var baseatk = 5, basedef = 5, basespd = 1, basercv = 1, basehp = 12;
+	var MINATK = 5; MINDEF = 5, MINSPD = 1; MINRCV = 1, MINHP = 20;
+	var baseatk = 5, basedef = 5, basespd = 1, basercv = 1, basehp = 10;
 	var PENALTYMIN = .05, PENALTYMAX = .15;
-	var BASICRATIO = 3/5, INTRATIO = 1, ADVRATIO = 8/5, BOSSRATIO = 2, MAGERATIO = 7/5;
+	var BASICRATIO = 3/5, INTRATIO = 1, ADVRATIO = 6/5, BOSSRATIO = 8/5, MAGERATIO = 6/5;
 	var XPRATE = 1;
 	var TRAPPEDCHESTDAMAGE = .75;
 	var atkloss = 0, defloss = 0, spdloss = 0, rcvloss = 0;
 	var subscribers = new Array();
 	var btnnew = new Button();
 	var btnload = new Button();
+	var hardcore = true;
 
 	subscribe = function(s) {
 		subscribers.push(s);
@@ -69,11 +68,10 @@ var Stage = function Stage() {
 		setVolume(volume);
 
 		oldbalance = 0;
-		enemiesdeafeated = 0;
 		stage = 0;
 		summons = 0;
 		deaths = 0;
-		player = {hp: MINHP, currenthp: MINHP, xp: 1, currentxp : 0, atk: MINATK, def: MINDEF, spd: MINSPD, rcv: MINRCV, act: 99, spl: 0};
+		player = {hp: MINHP, currenthp: MINHP, xp: 1, currentxp : 0, atk: MINATK, def: MINDEF, spd: MINSPD, rcv: MINRCV, act: 99, spl: 0, statuseffect: NORMAL};
 
 		displayedxp = 0;
 
@@ -117,12 +115,12 @@ var Stage = function Stage() {
 		if (evt.clientY < _height*SCREENRATIO) {
 			if (state == SAVE) {
 				if (evt.button == 0) {
-					if (check_collision(btnload, evt.clientX, evt.clientY)) {
+					if (btnload.check(evt.clientX, evt.clientY)) {
 						load();
 						reset();
 						state = WAITING;
 					}
-					else if (check_collision(btnnew, evt.clientX, evt.clientY)) {
+					else if (btnnew.check(evt.clientX, evt.clientY)) {
 						localStorage.clear();
 						state = WAITING;
 					}
@@ -142,6 +140,10 @@ var Stage = function Stage() {
 	};
 
 	this.mousemove = function(evt) {
+		if (state == SAVE) {
+			btnload.check(evt.clientX, evt.clientY);
+			btnnew.check(evt.clientX, evt.clientY);
+		}
 	};
 
 	this.touchstart = function(evt) {
@@ -209,8 +211,6 @@ var Stage = function Stage() {
 	click  = function(inputX, inputY) {
 		if (state == WAITING) {
 			oldbalance = newbalance;
-			enemiesdefeated += newenemies;
-			newenemies = 0;
 			state = INPLAY;
 		}
 		else if (state == PAUSED) state = INPLAY;
@@ -221,29 +221,41 @@ var Stage = function Stage() {
 			var y = Math.floor(inputY/height);
 			var enemy = model.get(x,y);
 			if ((enemy.type == BASIC || enemy.type == INTERMEDIATE || enemy.type == ADVANCED || enemy.type == MAGE || (enemy.type == BOSS && !locked)) && enemy.statuseffect != PETRIFIED){
-				var atk = player.atk;
-				var spd = enemy.spd;
-
-				var d = Math.round(Math.random()*atk/4+(3*atk/4))*(3/2);
-				if (Math.floor(Math.random()*32) === 0) {
+				
+				var atk = Math.round(player.atk + Math.random()*(player.atk * (1/10))); //base attak
+				if (player.statuseffect == ELECTROCUTED) atk /= 2;//electrocution weakens enemies
+				var def = Math.round(enemy.def * (1/2) - Math.random()*(enemy.def * (1/10))); //base defense
+				if (enemy.statuseffect == FROSTBITE) def /= 2;//frostbite lowers enemy defense
+				
+				var dmg = atk - def; //damage
+				if (dmg <= 0) dmg = 1;
+				
+				var spd = enemy.spd * 2 - player.spd;
+				if (enemy.spd < 1) spd = 1;
+				if (spd < 0) spd = 0;
+				
+				var spdcheck = Math.floor(Math.random()*(32+spd));
+				
+				
+				if (spdcheck <= 1) {
 					//critical hit
-					d *= 2;
+					dmg *= 2;
 					var m = new Message();
 					var fs = width/3;
 					var txt = "critical hit";
 					m = {type: GREEN, message: txt, x: inputX-(fs*txt.length/2), y: inputY, s: fs, duration: 1, tick: 0, delay: 0};
 					messages.push(m);
 				}
-				else if (Math.floor(Math.random()*256/spd) === 0) {
+				else if (spdcheck >= 32 + player.spd * .8) {
 					//miss
-					d = 0;
+					dmg = 0;
 					var m = new Message();
 					var fs = width/3;
 					var txt = "miss";
 					m = {type: WHITE, message: txt, x: inputX-(fs*txt.length/2), y: inputY, s: fs, duration: 1, tick: 0, delay: 0};
 					messages.push(m);
 				}
-				enemy.currenthp -= Math.round(d);
+				enemy.currenthp -= dmg;
 
 				if (!isInjured(x,y)) {
 					var p = new Point();
@@ -253,16 +265,22 @@ var Stage = function Stage() {
 
 				var m = new Message();
 				var fs = width/3;
-				m = {type: GREEN, message:Math.round(d), x: inputX+fs*Math.random(), y: inputY-fs*Math.random(), s: fs, duration: 1, tick: 0, delay: 0};
+				m = {type: GREEN, message:dmg, x: inputX+fs*Math.random(), y: inputY-fs*Math.random(), s: fs, duration: 1, tick: 0, delay: 0};
 				messages.push(m);
 
 				if (enemy.currenthp > 0) {
 					//enemy attack
-					var def = player.def;
-					var atk = enemy.atk;
+					var atk = Math.round(enemy.atk + Math.random()*(enemy.atk * (1/10))); //base attack
+					if (enemy.statuseffect == ELECTROCUTED) atk /= 2;//electrocution weakens enemies
+					var def = Math.round(player.def * (1/2) - Math.random()*(player.def * (1/10))); //base defense
+					if (player.statuseffect == FROSTBITE) def /= 2;//frostbite lowers enemy defense
+				
+					var dmg = atk - def; //damage
+					if (dmg <= 0) dmg = 1;
+					
+					if (player.currenthp == player.hp && dmg >= player.hp) dmg = player.currenthp - 1;//prevent one hit kills on player
 
-					var d = Math.round(atk - def/2*(Math.random()*50+100)/256) + 1;
-					if (enemy.type == BOSS) d += d * ((56-defeated.length)/56); //boss modifier
+					if (enemy.type == BOSS) dmg *= ((56-defeated.length)/56); //boss modifier
 
 					var playerhp = ""+player.hp;
 					var fs = _height*(1-SCREENRATIO) / 5;
@@ -271,32 +289,38 @@ var Stage = function Stage() {
 					var position = _height*SCREENRATIO + margin;
 					var offset = _width*.6;
 					var l = offset-margin-buffer-(fs*3);
+					
+					var spd = player.spd * 2 - enemy.spd;
+					//if (player.spd < 1) spd = 1;
+					if (spd < 0) spd = 0;
+					
+					if (enemy.statuseffect == KNOCKEDDOWN) spd = 0;//knockdown immobilizes an enemy
+					
+					var spdcheck = Math.floor(Math.random()*(32+spd));
 
-					var spd = player.spd;
-
-					if (Math.floor(Math.random()*256/spd) === 0) {
-						//miss
-						d = 0;
+					if (spdcheck <= 1) {
+					//miss
+						dmg = 0;
 						var m = new Message();
 						var txt = "dodge";
 						var startx = (l - txt.length*fs)/2 + fs*3 + buffer + margin;
 						m = {type: WHITE, message: txt, x: startx, y: position, s: fs, duration: 1, tick: 0, delay: 0};
 						messages.push(m);
 					}
-
-					if (d > 0) {
+					
+					if (dmg > 0) {
 						var m = new Message();
-						var dam = ""+Math.round(d);
+						var dam = ""+Math.round(dmg);
 						var percent = player.currenthp/player.hp;
 						var startx = offset - (1-percent)*l - dam.length*fs;
-						m = {type: RED, message: Math.round(d), x: startx, y: position, s: fs, duration: 1, tick: 0, delay: 0};
+						m = {type: RED, message: Math.round(dmg), x: startx, y: position, s: fs, duration: 1, tick: 0, delay: 0};
 						messages.push(m);
 
-						player.spl += Math.round((d/(player.hp*3))*100);
+						player.spl += Math.round((dmg/(player.hp*3))*100);
 						if (player.spl > 100) player.spl = 100;
+						
+						player.currenthp -= Math.round(dmg);
 					}
-
-					player.currenthp -= Math.round(d);
 
 					if (player.currenthp <= 0) {
 						player.currenthp = 0;
@@ -319,47 +343,8 @@ var Stage = function Stage() {
 					}
 				}
 				else {
-					newenemies++;
-					if (enemy.type == BOSS) {
-						//boss defeated
-						enemy.type = CHEST;
-						enemy.act = 0;
-						var p = new Point();
-						p = {x: x,y: y};
-						chests.push(p);
-						cleared = true;
-					}
-					else if (enemy.type == MAGE) {
-						//mage defeated
-						for (var i=0; i<mages.length; i++) {
-							if (mages[i].x == x && mages[i].y == y) mages.splice(i,1);
-						}
-						enemy.type = EMPTY;
-					}
-					else if (enemy.type == ADVANCED) {
-						locked = false;
-						enemy.type = EMPTY;
-					}
-					else enemy.type = EMPTY;
-
-					for (var i=0; i<injured.length; i++) {
-						if (injured[i].x == x && injured[i].y == y) injured.splice(i,1);
-					}
-
-					if (Math.floor(Math.random()*16) == 0) {
-						enemy.type = CHEST;
-						enemy.act = 0;
-						var p = new Point();
-						p = {x: x,y: y};
-						chests.push(p);
-					}
-					else {
-						var p = new Point();
-						p = {x: x,y: y};
-						defeated.push(p);
-					}
-
-					player.currentxp+= enemy.xp;
+					//deafeated
+					defeatEnemy(x,y);
 				}
 			}
 			else if (enemy.type == CHEST) {
@@ -377,12 +362,11 @@ var Stage = function Stage() {
 					var g = CHESTVALUE*5;
 					g = Math.round(g*.9)+Math.round(Math.random()*(g*.2));
 					newbalance += g;
+					
 					var m = new Message();
-					var txt = ""+g+" gld";
-					var fs = Math.floor(_width/(txt.length+1));
-					var starty = (_height-fs)/2;
-					var startx = (_width-(fs*txt.length))/2;
-					m = {type: YELLOW, message: txt, x: startx, y: starty, s: fs, duration: 2, tick: 0, delay: 0};
+					var fs = width/3;
+					var txt = ""+g+"g";
+					m = {type: YELLOW, message:txt, x: inputX+fs*Math.random(), y: inputY-fs*Math.random(), s: fs, duration: 1, tick: 0, delay: 0};
 					messages.push(m);
 				}
 				else if (n == 1) {
@@ -390,12 +374,11 @@ var Stage = function Stage() {
 					var g = CHESTVALUE*2;
 					g = Math.round(g*.9)+Math.round(Math.random()*(g*.2));
 					newbalance += g;
+					
 					var m = new Message();
-					var txt = ""+g+" gld";
-					var fs = Math.floor(_width/(txt.length+1));
-					var starty = (_height-fs)/2;
-					var startx = (_width-(fs*txt.length))/2;
-					m = {type: YELLOW, message: txt, x: startx, y: starty, s: fs, duration: 2, tick: 0, delay: 0};
+					var fs = width/3;
+					var txt = ""+g+"g";
+					m = {type: YELLOW, message:txt, x: inputX+fs*Math.random(), y: inputY-fs*Math.random(), s: fs, duration: 1, tick: 0, delay: 0};
 					messages.push(m);
 				}
 				else if (n == 2) {
@@ -403,22 +386,19 @@ var Stage = function Stage() {
 					var g = CHESTVALUE;
 					g = Math.round(g*.9)+Math.round(Math.random()*(g*.2));
 					newbalance += g;
+					
 					var m = new Message();
-					var txt = ""+g+" gld";
-					var fs = Math.floor(_width/(txt.length+1));
-					var starty = (_height-fs)/2;
-					var startx = (_width-(fs*txt.length))/2;
-					m = {type: YELLOW, message: txt, x: startx, y: starty, s: fs, duration: 2, tick: 0, delay: 0};
+					var fs = width/3;
+					var txt = ""+g+"g";
+					m = {type: YELLOW, message:txt, x: inputX+fs*Math.random(), y: inputY-fs*Math.random(), s: fs, duration: 1, tick: 0, delay: 0};
 					messages.push(m);
 				}
 				else {
 					//trapped chest
 					var m = new Message();
-					var txt = "trapped chest";
-					var fs = Math.floor(_width/(txt.length+1));
-					var starty = (_height-fs)/2;
-					var startx = (_width-(fs*txt.length))/2;
-					m = {type: RED, message: txt, x: startx, y: starty, s: fs, duration: 2, tick: 0, delay: 0};
+					var fs = width/3;
+					var txt = "boom";
+					m = {type: RED, message:txt, x: inputX+fs*Math.random(), y: inputY-fs*Math.random(), s: fs, duration: 1, tick: 0, delay: 0};
 					messages.push(m);
 
 					if (!mute) resourceRepository.boom.play();
@@ -497,17 +477,24 @@ var Stage = function Stage() {
 						index = 20; //gray
 						break;
 				}
-				if (state == WAITING || state == PAUSED) index = ((i+j+_frame) << 1 )%16; //colorful waiting screen
+				var fs = (_width / model.getWidth());
+				if (state == WAITING || state == PAUSED || state == SAVE) index = ((i+j+_frame) << 1 )%16; //colorful waiting screen
 				else if (model.get(i,j).statuseffect == PETRIFIED) index = 22;//dark gray
 				ctx.drawImage(resourceRepository.tileSheet, 64*(index%8), 64*Math.floor(index/8), 64, 64, i*width, j*height, width, height);
 
-				if (state == INPLAY && model.get(i,j).type != -1) { //add damamge animation
+				if (state == INPLAY && model.get(i,j).type != -1) { 
+					//add damamge animation
 					index = 0; //red
 					if (model.get(i,j).statuseffect == PETRIFIED) index = 21;//light gray
 					var hppercent = (model.get(i,j).currenthp / model.get(i,j).hp);
 					var offset = Math.floor(64*hppercent);
 					//var offset = Math.floor((model.get(i,j).currenthp / model.get(i,j).hp)*64);
 					if (offset < 64 && offset >= 0) ctx.drawImage(resourceRepository.tileSheet, 64*(index%8)+offset, 64*Math.floor(index/8), 64-offset, 64, i*width+(width*hppercent), j*height, width-(width*hppercent), height);
+					//add status effect sprite (looks like crap atm)
+					if (model.get(i,j).statuseffect == FROSTBITE) ctx.drawImage(resourceRepository.spriteSheet, 64*(FROSTBITE), 0, 64, 64, i*width + width/4, j*height + height/4, width/2, height/2);
+					else if (model.get(i,j).statuseffect == BURNED) ctx.drawImage(resourceRepository.spriteSheet, 64*(BURNED), 0, 64, 64, i*width + width/4, j*height + height/4, width/2, height/2);
+					else if (model.get(i,j).statuseffect == ELECTROCUTED) ctx.drawImage(resourceRepository.spriteSheet, 64*(ELECTROCUTED), 0, 64, 64, i*width + width/4, j*height + height/4, width/2, height/2);
+					else if (model.get(i,j).statuseffect == KNOCKEDDOWN) ctx.drawImage(resourceRepository.spriteSheet, 64*(KNOCKEDDOWN), 0, 64, 64, i*width + width/4, j*height + height/4, width/2, height/2);
 				}
 				if (state == INPLAY && locked) { //add lock and key sprites
 					if (model.get(i,j).type == BOSS) ctx.drawImage(resourceRepository.spriteSheet, 0, 0, 64, 64, i*width + (width*.1),j*height + (height*.1),width*.8,height*.8);
@@ -546,9 +533,7 @@ var Stage = function Stage() {
 				}
 			}
 		}
-
 		//draw scoreboard
-		//ctx.clearRect(0, (_height*SCREENRATIO), _width, (_height*(1-SCREENRATIO)));
 		ctx.drawImage(resourceRepository.background, 0, _height*SCREENRATIO, _width, _height*(1-SCREENRATIO));
 
 		var fs = _height*(1-SCREENRATIO) / 6;
@@ -570,8 +555,6 @@ var Stage = function Stage() {
 		var bezel = 2;
 
 		//display hp bar
-		//ctx.fillStyle = "#a6a6a6";
-		//ctx.fillRect(margin+buffer+(fs*2), position, l, fs);
 		ctx.strokeStyle="black";
 		ctx.strokeRect(margin+buffer+(fs*3), position, l, fs);
 		if (l*percent > bezel*2) {
@@ -584,8 +567,6 @@ var Stage = function Stage() {
 			else ctx.fillStyle="#eb1c23"; //red
 			ctx.fillRect(margin+buffer+(fs*3)+bezel, position+bezel, l*percent-bezel*2, fs-bezel*2); //inner box
 		}
-		//var hp = zeroFill(Math.round(player.currenthp), (""+player.hp).length);
-		//writeMessage(ctx, hp, WHITE, margin+buffer+(fs*3)+l-(fs*hp.length), position, fs);
 		//ticking xp
 		if (++displayedxp > player.currentxp/player.xp*100) displayedxp = player.currentxp/player.xp*100;
 		if (displayedxp >= 100) {
@@ -596,8 +577,6 @@ var Stage = function Stage() {
 		}
 		percent = displayedxp/100;
 		//display xp bar
-		//ctx.fillStyle = "#a6a6a6";
-		//ctx.fillRect(margin+buffer+(fs*2), position+(fs), l, fs);
 		ctx.strokeStyle="black";
 		ctx.strokeRect(margin+buffer+(fs*3), position+(3*fs/2), l, fs);
 		if (l*percent > bezel*2) {
@@ -641,7 +620,7 @@ var Stage = function Stage() {
 						writeMessage(ctx, messages[i].message, messages[i].type, messages[i].x, messages[i].y, messages[i].s);
 					}
 
-					if (messages[i].ticks++ >= messages[i].duraction) messages.splice(i--, 1); //remove
+					if (messages[i].ticks++ >= messages[i].duration) messages.splice(i--, 1); //remove
 				}
 			}
 		}
@@ -651,8 +630,13 @@ var Stage = function Stage() {
 			var w = _width*.9;
 			var h = w * .8
 			var margin = _width*.05;
-			ctx.drawImage(resourceRepository.box, margin, _height*SCREENRATIO/2 - h/2, w, h);
-			ctx.drawImage(resourceRepository.logo, margin, _height*SCREENRATIO/2 - h/2 - w*.29, w, w*.19);
+			
+			drawBox(ctx, 20, margin, _height*SCREENRATIO/2 - h/2, w, h);
+			drawBox(ctx, 20, margin, _height*.9/2 - h/2 - w*.29, w, w*.19);
+
+			var txt = "rubik rpg";
+			var fs = Math.floor(w/(txt.length+6));
+			writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, _height*.9/2 - h/2 - w*.29 + (w*.19 - fs)/2, fs);
 
 			var txt = "tap to begin";
 			if (stage > 0) txt = "tap to continue";
@@ -829,7 +813,13 @@ var Stage = function Stage() {
 			var w = _width*.9;
 			var h = w * .8
 			var margin = _width*.05;
-			ctx.drawImage(resourceRepository.logo, margin, _height*SCREENRATIO/2 - h/2 - w*.29, w, w*.19);
+			
+			drawBox(ctx, 20, margin, _height*.9/2 - h/2 - w*.29, w, w*.19);
+		
+			var txt = "rubik rpg";
+			var fs = Math.floor(w/(txt.length+6));
+			writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, _height*.9/2 - h/2 - w*.29 + (w*.19 - fs)/2, fs);
+			
 			var txt = "tap to resume";
 			var fs = _width / (txt.length+2);
 			if (Math.round(_frame/5)% 2 == 1) writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, _height*SCREENRATIO/2 + h/2 + fs*2, fs);
@@ -838,22 +828,64 @@ var Stage = function Stage() {
 			writeMessage(ctx, txt, SUPER, (_width-fs*txt.length)/2, _height*SCREENRATIO/2 - fs/2, fs);
 		}
 		else if (state == FAILED) {
-			var txt = "penalty";
-			var fs = Math.floor(_width/(txt.length+2));
-			var starty = (_height*SCREENRATIO-fs*6)/2;
-			var startx = (_width-(fs*txt.length))/2;
-			writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty, fs);
+			if (!hardcore) {
+				var txt = "penalty";
+				var fs = Math.floor(_width/(txt.length+2));
+				var starty = (_height*SCREENRATIO-fs*6)/2;
+				var startx = (_width-(fs*txt.length))/2;
+				writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty, fs);
 
-			txt = atkloss+" atk";
-			writeMessage(ctx, txt, RED,(_width-(fs*txt.length))/2, starty+fs, fs);
-			txt = defloss+" def";
-			writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty+fs*2, fs);
-			txt = spdloss+" spd";
-			writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty+fs*3, fs);
-			txt = rcvloss+" rcv";
-			writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty+fs*4, fs);
-			txt = (newbalance-oldbalance)+" gld";
-			writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty+fs*5, fs);
+				txt = atkloss+" atk";
+				writeMessage(ctx, txt, RED,(_width-(fs*txt.length))/2, starty+fs, fs);
+				txt = defloss+" def";
+				writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty+fs*2, fs);
+				txt = spdloss+" spd";
+				writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty+fs*3, fs);
+				txt = rcvloss+" rcv";
+				writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty+fs*4, fs);
+				txt = (newbalance-oldbalance)+" gld";
+				writeMessage(ctx, txt, RED, (_width-(fs*txt.length))/2, starty+fs*5, fs);
+			}
+			else {
+				var w = _width*.9;
+				var h = w * .8
+				var margin = _width*.05;
+
+				var fs = Math.floor(w/16);
+				var buffer = fs/2;
+				var starth = _height*SCREENRATIO/2 - fs*(5);
+				drawBox(ctx, 20, margin, starth, w, fs*10);
+				
+				var txt = "game over";
+				var fs2 = Math.floor(_width/(txt.length+2));
+				var starty = (_height*SCREENRATIO-fs2*5)/2;
+				var startx = (_width-(fs2*txt.length))/2;
+				writeMessage(ctx, txt, RED, (_width-(fs2*txt.length))/2, starty, fs2);
+
+				var txt = "stages";
+				writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(3)), fs);
+				txt = ""+(stage+1);
+				writeMessage(ctx, txt, PINK, margin+w-(fs*(txt.length+1)), starth + (fs*(3)), fs);
+
+				var txt = "spawns";
+				writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(9/2)), fs);
+				txt = ""+summons;
+				writeMessage(ctx, txt, PINK, margin+w-(fs*(txt.length+1)), starth + (fs*(9/2)), fs);
+			
+				var txt = "balance";
+				writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(6)), fs);
+				txt = ""+(newbalance+oldbalance);
+				writeMessage(ctx, txt, YELLOW, margin+w-(fs*(txt.length+1)), starth + (fs*(6)), fs);
+				
+				if (!hardcore) {
+					var txt = "deaths";
+					writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(15/2)), fs);
+					txt = ""+deaths;
+					var fc = PINK;
+					if (deaths > 0) fc = RED;
+					writeMessage(ctx, txt, fc, margin+w-(fs*(txt.length+1)), starth + (fs*(15/2)), fs);
+				}
+			}
 
 			fs = Math.floor((_width*.9)/16);
 
@@ -867,80 +899,84 @@ var Stage = function Stage() {
 			}
 
 			if (_frame > 24) {
-				//death penalty
-				player.atk -= atkloss;
-				player.def -= defloss;
-				player.spd -= spdloss;
-				player.rcv -= rcvloss;
+				if (!hardcore) {
+					//death penalty
+					player.atk -= atkloss;
+					player.def -= defloss;
+					player.spd -= spdloss;
+					player.rcv -= rcvloss;
 
-				player.currentxp = 0;
-				displayedxp = 0;
-				newbalance = oldbalance;
-				newenemies = 0;
+					player.currentxp = 0;
+					displayedxp = 0;
+					newbalance = oldbalance;
 
-				player.act = 0;
+					player.act = 0;
 
-				player.currenthp = player.hp;
+					player.currenthp = player.hp;
 
-				/* prevent death holes
-				if (baseatk > player.atk) baseatk = player.atk;
-				if (basedef > player.def) basedef = player.def;
-				if (basespd > player.spd) basespd = player.spd;
-				if (basercv > player.rcv) basercv = player.rcv;
-				if (basehp > player.hp) basehp = player.hp;
-				*/
-				_frame = 0;
-				deaths++;
+					_frame = 0;
+					deaths++;
+				}
+				else {
+					oldbalance = 0;
+					stage = 0;
+					summons = 0;
+					deaths = 0;
+					player = {hp: MINHP, currenthp: MINHP, xp: 1, currentxp : 0, atk: MINATK, def: MINDEF, spd: MINSPD, rcv: MINRCV, act: 99, spl: 0, statuseffect: NORMAL};
+					
+					baseatk = 5, basedef = 5, basespd = 1, basercv = 1, basehp = 10;
+
+					displayedxp = 0;
+				}
 				save();
 				//notify(false); //stage failed
 				reset();
+				
 			}
 		}
 		else if (state == SUCCESS) {
-			//var txt = "dungeon cleared";
-			//var fs = Math.floor(_width/(txt.length+1));
-			//var starty = (_height*SCREENRATIO-fs)/2;
-			//var startx = (_width-(fs*txt.length))/2;
-			//writeMessage(ctx, txt, SUPER, startx, starty, fs);
 			var w = _width*.9;
 			var h = w * .8
 			var margin = _width*.05;
-			ctx.drawImage(resourceRepository.box, margin, _height*SCREENRATIO/2 - h/2, w, h);
-			ctx.drawImage(resourceRepository.logo, margin, _height*SCREENRATIO/2 - h/2 - w*.29, w, w*.19);
+			
+			drawBox(ctx, 20, margin, _height*.9/2 - h/2 - w*.29, w, w*.19);
+
+			var txt = "rubik rpg";
+			var fs = Math.floor(w/(txt.length+6));
+			writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, _height*.9/2 - h/2 - w*.29 + (w*.19 - fs)/2, fs);
 
 			fs = Math.floor(w/16);
 			var buffer = fs/2;
-			var starth = _height*SCREENRATIO/2 - h/2;
+			var starth = _height*SCREENRATIO/2 - fs*(9/2);
+			drawBox(ctx, 20, margin, starth, w, fs*9);
 
-			var txt = "dungeon cleared";
+			var txt = "stage cleared";
 			writeMessage(ctx, txt, SUPER, (_width-fs*txt.length)/2, starth + (fs*(1/2)), fs);
 
-			var txt = "floors";
-			writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(5/2)), fs);
+			var txt = "stages";
+			writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(3)), fs);
 			txt = ""+(stage+1);
-			writeMessage(ctx, txt, PINK, margin+w-(fs*(txt.length+1)), starth + (fs*(5/2)), fs);
+			writeMessage(ctx, txt, PINK, margin+w-(fs*(txt.length+1)), starth + (fs*(3)), fs);
 
-			var txt = "enemies";
+			var txt = "spawns";
 			writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(9/2)), fs);
-			txt = ""+(enemiesdefeated+newenemies);
-			writeMessage(ctx, txt, PINK, margin+w-(fs*(txt.length+1)), starth + (fs*(9/2)), fs);
-
-			var txt = "deaths";
-			writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(13/2)), fs);
-			txt = ""+deaths;
-			var fc = PINK;
-			if (deaths > 0) fc = RED;
-			writeMessage(ctx, txt, fc, margin+w-(fs*(txt.length+1)), starth + (fs*(13/2)), fs);
-
-			var txt = "summons";
-			writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(17/2)), fs);
 			txt = ""+summons;
-			writeMessage(ctx, txt, PINK, margin+w-(fs*(txt.length+1)), starth + (fs*(17/2)), fs);
-
-			var txt = "loot";
-			writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(21/2)), fs);
-			txt = ""+newbalance;
-			writeMessage(ctx, txt, YELLOW, margin+w-(fs*(txt.length+1)), starth + (fs*(21/2)), fs);
+			writeMessage(ctx, txt, PINK, margin+w-(fs*(txt.length+1)), starth + (fs*(9/2)), fs);
+		
+			
+			var txt = "balance";
+			writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(6)), fs);
+			txt = ""+(newbalance+oldbalance);
+			writeMessage(ctx, txt, YELLOW, margin+w-(fs*(txt.length+1)), starth + (fs*(6)), fs);
+			
+			if (!hardcore) {
+				var txt = "deaths";
+				writeMessage(ctx, txt, WHITE, margin+fs, starth + (fs*(15/2)), fs);
+				txt = ""+deaths;
+				var fc = PINK;
+				if (deaths > 0) fc = RED;
+				writeMessage(ctx, txt, fc, margin+w-(fs*(txt.length+1)), starth + (fs*(15/2)), fs);
+			}
 
 			if (typeof(Storage) !== "undefined") {
 				txt = "saving...";
@@ -961,7 +997,6 @@ var Stage = function Stage() {
 				basehp = player.hp;
 
 				save();
-				//notify(true); //stage cleared
 				reset();
 			}
 		}
@@ -969,52 +1004,36 @@ var Stage = function Stage() {
 			var w = _width*.9;
 			var h = w * .8
 			var margin = _width*.05;
-			ctx.drawImage(resourceRepository.box, margin, _height*SCREENRATIO/2 - h/2, w, h);
-			ctx.drawImage(resourceRepository.logo, margin, _height*SCREENRATIO/2 - h/2 - w*.29, w, w*.19);
+			drawBox(ctx, 20, margin, _height*.9/2 - h/2 - w*.29, w, w*.19);
+
+			var txt = "rubik rpg";
+			var fs = Math.floor(w/(txt.length+6));
+			writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, _height*.9/2 - h/2 - w*.29 + (w*.19 - fs)/2, fs);
 
 			fs = Math.floor(w/20);
+			
 			var buffer = fs/2;
-			var starth = _height*SCREENRATIO/2 - h/2;
+			var starth = (_height-(fs*7))/2;
+			drawBox(ctx, 20, margin, starth, w, fs*(6));
 
-			var bh = fs*4;
-			var bw = bh*2;
-			var bb = fs/6;
+			var bh = fs*2;
 
 			var txt = "save found!";
-			writeMessage(ctx, txt, LOGO, (_width-fs*txt.length)/2, starth + (fs*(1)), fs);
+			writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(1)), fs);
+			
+			w -= fs;
 
-			btnload = { x: (_width-bw)/2, y: starth + (fs*(5/2)), w: bw, h: bh };
-			drawButton(ctx, btnload);
-			var txt = "load";
-			writeMessage(ctx, txt, YELLOW, (_width-fs*txt.length)/2, starth + (fs*(4)), fs);
+			btnload.init("load", margin+(fs/2), starth + (fs*(3)), w/2, bh);
+			btnload.draw(ctx);
 
-			btnnew = { x: (_width-bw)/2, y: starth + (fs*(15/2)), w: bw, h: bh, func: 0 };
-			drawButton(ctx, btnnew);
-			var txt = "new";
-			writeMessage(ctx, txt, YELLOW, (_width-fs*txt.length)/2, starth + (fs*(17/2)), fs);
-			var txt = "game";
-			writeMessage(ctx, txt, YELLOW, (_width-fs*txt.length)/2, starth + (fs*(19/2)), fs);
-
-			var txt = "new game";
-			writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(12)), fs);
-			var txt = "will erase";
-			writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(13)), fs);
-			var txt = "previous save";
-			writeMessage(ctx, txt, WHITE, (_width-fs*txt.length)/2, starth + (fs*(14)), fs);
+			btnnew.init("discard", margin+(fs/2)+w/2, starth + (fs*(3)), w/2, bh);
+			btnnew.draw(ctx);
 		}
-
-		//draw menu button
-		/*
-		if (state != SUCCESS && state != FAILED) {
-			var size = _width / (model.getWidth()*2);
-			ctx.drawImage(resourceRepository.menu, _width-size, _height-size, size, size);
-		}*/
 	};
 
 	save = function() {
 		if (typeof(Storage) !== "undefined") {
 			// Code for localStorage/sessionStorage.
-			//localStorage.setItem("player", JSON.stringify(player));
 			localStorage.setItem("hp", player.hp);
 			localStorage.setItem("currenthp", player.currenthp);
 			localStorage.setItem("xp", player.xp);
@@ -1027,7 +1046,7 @@ var Stage = function Stage() {
 			localStorage.setItem("stage", stage);
 			localStorage.setItem("balance", newbalance);
 			localStorage.setItem("deaths", deaths);
-			localStorage.setItem("enemies", (enemiesdefeated+newenemies));
+			localStorage.setItem("enemies", (0));
 			localStorage.setItem("summons", summons);
 		}
 		else {
@@ -1050,50 +1069,14 @@ var Stage = function Stage() {
 		basehp = player.hp;
 	}
 
-	drawButton = function(ctx, b) {
-		var bb = b.h / 24;
-		ctx.strokeStyle="black";
-		ctx.strokeRect(b.x, b.y, b.w, b.h);
-		ctx.fillStyle="white";
-		ctx.fillRect(b.x, b.y, b.w-bb, b.h-bb); //light box
-		ctx.fillStyle="#3e701e"; //dark green
-		ctx.fillRect(b.x+bb, b.y+bb, b.w-bb, b.h-bb); //shadow box
-		ctx.fillStyle="#6cc236"; //green
-		ctx.fillRect(b.x+bb, b.y+bb, b.w-(bb*2), b.h-(2*bb)); //inner box
-	}
-
-	check_collision = function(b, x, y) {
-		if (x > b.x && x < b.x+b.w && y > b.y && y < b.y+b.h) return true;
-		return false;
-	}
-
-	writeMessage = function(ctx, m, t, x, y, s) {
-		var _m = ""+m;
-		var _m = _m.toLowerCase();
-		if (x+ _m.length*s > _width) x = _width-_m.length*s;
-		else if (x < 0) x=0;
-		for(var i=0; i<_m.length; i++) {
-			if (_m.charCodeAt(i) <= 126 && _m.charCodeAt(i) >= 32) ctx.drawImage(resourceRepository.font, FONTSIZE*(_m.charCodeAt(i)-32)+1, FONTSIZE*t+1, FONTSIZE-2, FONTSIZE-2, x+(i*s),y,s,s);
-			else ctx.drawImage(resourceRepository.font, FONTSIZE*(41 /*question mark*/)+1, FONTSIZE*t+1, FONTSIZE, FONTSIZE, x+(i*s),y,s,s);
-		}
-	};
-
-	zeroFill = function(n,p) {
-		var s = ""+n;
-		while (s.length<p) {
-			s = "0"+s;
-		}
-		return s;
-	};
-
 	levelup = function() {
 		player.xp = Math.ceil(player.xp+XPRATE);
-		player.hp += 7;
+		player.hp += Math.round(1 + Math.random() * (player.hp * 0.1));
 		player.currenthp = player.hp;
-		player.atk += Math.round(Math.random() + (1 * ((255 - player.atk) /256)));
-		player.def += Math.round(Math.random() + (1 * ((255 - player.def) /256)));
-		player.spd += Math.round(Math.random() + (1 * ((255 - player.spd) /256)));
-		player.rcv += Math.round(Math.random() + (1 * ((255 - player.rcv) /256)));
+		player.atk += Math.round(1 + Math.random());
+		player.def += Math.round(1 + Math.random());
+		player.spd += Math.round(1 + Math.random());
+		player.rcv += Math.round(1 + Math.random());
 
 		var m = new Message();
 		var txt = "status up";
@@ -1125,7 +1108,7 @@ var Stage = function Stage() {
 
 		//stageboss (1 per stage)
 		var temp = new Entity();
-		temp = {hp: basehp*6, currenthp: basehp*6, xp: 5*(stage+1), atk: Math.floor(baseatk*BOSSRATIO+1), def: Math.floor(basedef*BOSSRATIO+1), spd: 1, rcv: Math.floor(basercv*BOSSRATIO+1), act: 0, statuseffect: NORMAL, sts: 0, type: BOSS};
+		temp = {hp: baseatk*7, currenthp: baseatk*7, xp: 5*(stage+1), atk: Math.floor(baseatk*BOSSRATIO+1), def: Math.floor(basedef*BOSSRATIO+1), spd: 1, rcv: Math.floor(basercv*BOSSRATIO+1), act: 0, statuseffect: NORMAL, sts: 0, type: BOSS};
 		var x = Math.floor(Math.random()*model.getWidth());
 		var y = Math.floor(Math.random()*model.getHeight());
 		model.set(x, y, temp);
@@ -1133,7 +1116,7 @@ var Stage = function Stage() {
 
 		//teamleader (at least 1 per stage)
 		var temp = new Entity();
-		temp = {hp: basehp*4, currenthp: basehp*4, xp: 3*(stage+1), atk: Math.floor(baseatk*ADVRATIO+1), def: Math.floor(basedef*ADVRATIO+1), spd: 1, rcv: Math.floor(basercv*ADVRATIO+1), act: 0, statuseffect: NORMAL, sts: 0, type: ADVANCED};
+		temp = {hp: baseatk*5, currenthp: baseatk*5, xp: 3*(stage+1), atk: Math.floor(baseatk*ADVRATIO+1), def: Math.floor(basedef*ADVRATIO+1), spd: 1, rcv: Math.floor(basercv*ADVRATIO+1), act: 0, statuseffect: NORMAL, sts: 0, type: ADVANCED};
 		var x = stageboss.x;
 		var y = stageboss.y;
 		do {
@@ -1152,16 +1135,16 @@ var Stage = function Stage() {
 		if (t>= 70) {
 			if (t > 95) {
 				//advanced enemies (~5%)
-				temp = {hp: basehp*4, currenthp: basehp*4, xp: 3*(stage+1), atk: Math.floor(baseatk*ADVRATIO+1), def: Math.floor(basedef*ADVRATIO+1), spd: 1, rcv: Math.floor(basercv*ADVRATIO+1), act: 0, statuseffect: NORMAL, sts: 0, type: ADVANCED};
+				temp = {hp: baseatk*5, currenthp: baseatk*5, xp: 3*(stage+1), atk: Math.floor(baseatk*ADVRATIO+1), def: Math.floor(basedef*ADVRATIO+1), spd: 1, rcv: Math.floor(basercv*ADVRATIO+1), act: 0, statuseffect: NORMAL, sts: 0, type: ADVANCED};
 			}
 			else {
 				//intermediate enemies (~25%)
-				temp = {hp: basehp*3, currenthp: basehp*3, xp: 2*(stage+1), atk: Math.floor(baseatk*INTRATIO+1), atk: Math.floor(basedef*INTRATIO+1), spd: 1, rcv: Math.floor(basercv*INTRATIO+1), act: 0, statuseffect: NORMAL, sts: 0, type: INTERMEDIATE};
+				temp = {hp: baseatk*4, currenthp: baseatk*4, xp: 2*(stage+1), atk: Math.floor(baseatk*INTRATIO+1), def: Math.floor(basedef*INTRATIO+1), spd: 1, rcv: Math.floor(basercv*INTRATIO+1), act: 0, statuseffect: NORMAL, sts: 0, type: INTERMEDIATE};
 			}
 		}
 		else {
 			//basic enemies (~70%)
-			temp = {hp: basehp*2, currenthp: basehp*2, xp: 1*(stage+1), atk: Math.floor(baseatk*BASICRATIO+1), def: Math.floor(basedef*BASICRATIO+1), spd: 1, rcv: Math.floor(basercv*BASICRATIO+1), act: 0, statuseffect: NORMAL, sts: 0, type: BASIC};
+			temp = {hp: baseatk*3, currenthp: baseatk*3, xp: 1*(stage+1), atk: Math.floor(baseatk*BASICRATIO+1), def: Math.floor(basedef*BASICRATIO+1), spd: 1, rcv: Math.floor(basercv*BASICRATIO+1), act: 0, statuseffect: NORMAL, sts: 0, type: BASIC};
 		}
 		return temp;
 	};
@@ -1183,6 +1166,59 @@ var Stage = function Stage() {
 		}
 		return isinjured;
 	};
+	
+	defeatEnemy = function(x,y) {
+		var enemy = model.get(x,y);
+		
+		var m = new Message();
+		var fs = _width/model.getWidth()/3;
+		var txt = ""+bounties[enemy.type]+"g";
+		m = {type: YELLOW, message:txt, x: x*(_width/model.getWidth())+fs*Math.random(), y: y*(_width/model.getWidth())-fs*Math.random(), s: fs, duration: 1, tick: 0, delay: 0};
+		messages.push(m);
+		
+		newbalance += bounties[enemy.type];
+			
+		if (enemy.type == BOSS) {
+			//boss defeated
+			enemy.type = CHEST;
+			enemy.act = 0;
+			var p = new Point();
+			p = {x: x,y: y};
+			chests.push(p);
+			cleared = true;
+		}
+		else if (enemy.type == MAGE) {
+			//mage defeated
+			for (var j=0; j<mages.length; j++) {
+				if (mages[j].x == x && mages[j].y == y) mages.splice(j,1);
+			}
+			enemy.type = EMPTY;
+		}
+		else if (enemy.type == ADVANCED) {
+			locked = false;
+			enemy.type = EMPTY;
+		}
+		else enemy.type = EMPTY;
+
+		if (Math.floor(Math.random()*16) == 0) {
+			enemy.type = CHEST;
+			enemy.act = 0;
+			var p = new Point();
+			p = {x: x,y: y};
+			chests.push(p);
+		}
+		else {
+			var p = new Point();
+			p = {x: x,y: y};
+			defeated.push(p);
+		}
+		
+		for (var j=0; j<injured.length; j++) {
+			if (injured[j].x == x && injured[j].y == y) injured.splice(j,1);
+		}
+
+		player.currentxp+= enemy.xp;
+	};
 
 	this.update = function() {
 		if (++_frame > 100) _frame = 0;
@@ -1190,7 +1226,7 @@ var Stage = function Stage() {
 		if (state == INPLAY) {
 			//regenerate hp player
 			var rcv = player.rcv;
-			var regen = rcv/4;
+			var regen = rcv/16;
 			if (player.currenthp+regen < player.hp) {
 				player.currenthp += regen;
 			}
@@ -1199,8 +1235,12 @@ var Stage = function Stage() {
 			for(var i=0; i<injured.length; i++) {
 				var enemy = model.get(injured[i].x, injured[i].y);
 				var rcv = enemy.rcv;
-				var regen = rcv/16;
-				if (enemy.currenthp+regen <= enemy.hp) {
+				var regen = rcv/64;
+				if (enemy.currenthp <= 0) {
+					//enemy defeated
+					
+				}
+				else if (enemy.currenthp+regen <= enemy.hp) {
 					if (enemy.statuseffect == NORMAL) enemy.currenthp += regen;
 				}
 				else {
@@ -1222,6 +1262,33 @@ var Stage = function Stage() {
 					temp.statuseffect = NORMAL;
 					remove = true;
 				}
+				else {
+					if (temp.statuseffect == BURNED){
+						//deal burn damage
+						var atk = Math.round(player.atk * (1/32));
+						if (atk < 1) atk = 1;//minimum damage
+						temp.currenthp -= atk;
+						
+						var m = new Message();
+						var fs = _width/model.getWidth()/3;
+						m = {type: GREEN, message:atk, x: statuseffects[i].x*(_width/model.getWidth())+fs*Math.random(), y: statuseffects[i].y*(_width/model.getWidth())-fs*Math.random(), s: fs, duration: 1, tick: 0, delay: 0};
+						messages.push(m);
+						
+						if (!isInjured(statuseffects[i].x, statuseffects[i].y)) {
+							var p = new Point();
+							p = {x: statuseffects[i].x,y: statuseffects[i].y};
+							injured.push(p);
+						}
+						
+						//if enemy hp <= 0 remove them
+						if (temp.currenthp <= 0) {
+							temp.sts = 0;
+							temp.statuseffect = NORMAL
+							remove = true;
+							defeatEnemy(statuseffects[i].x, statuseffects[i].y);
+						}
+					}
+				}
 				model.set(statuseffects[i].x, statuseffects[i].y, temp);
 				if (remove) {
 					statuseffects.splice(i,1);
@@ -1229,10 +1296,10 @@ var Stage = function Stage() {
 				}
 			}
 			//mage check
-			if (!cleared && defeated.length > 0 && mages.length < stage && Math.floor(Math.random()*64) == 0) {
+			if (!cleared && defeated.length > 0 && mages.length < Math.floor(stage/2) && Math.floor(Math.random()*64) == 0) {
 				//spawn mage
 				var temp = new Entity();
-				temp = {hp: basehp*5, currenthp: basehp*5, xp: 4*(stage+1), atk: Math.floor(baseatk*MAGERATIO+1), def: Math.floor(basedef*MAGERATIO+1), spd: 1, rcv: Math.floor(basercv*MAGERATIO+1), statuseffect: NORMAL, sts: 0, act: 0, type: MAGE};
+				temp = {hp: baseatk*5, currenthp: baseatk*5, xp: 4*(stage+1), atk: Math.floor(baseatk*MAGERATIO+1), def: Math.floor(basedef*MAGERATIO+1), spd: 1, rcv: Math.floor(basercv*MAGERATIO+1), statuseffect: NORMAL, sts: 0, act: 0, type: MAGE};
 
 				var m = new Message();
 				var fs = _width/model.getWidth()/3;
